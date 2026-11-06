@@ -3,16 +3,16 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ArtifactStore, defaultConfig } from "../../core/src/index.js";
+import { ArtifactStore, resolveConfig } from "../../core/src/index.js";
 import { handleQoderPostToolUse } from "../src/handler.js";
 
 async function storeFor(t: test.TestContext): Promise<ArtifactStore> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "token-saver-qoder-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  return new ArtifactStore(defaultConfig, root);
+  return new ArtifactStore(resolveConfig(), root);
 }
 
-test("Qoder PostToolUse replaces verbose output and retains exit metadata", async (t) => {
+test("Qoder PostToolUse replaces verbose output in the original shape and retains exit metadata", async (t) => {
   const store = await storeFor(t);
   const output = Array.from({ length: 500 }, (_, index) => `log ${index}`).join("\n");
   const result = await handleQoderPostToolUse({
@@ -21,12 +21,17 @@ test("Qoder PostToolUse replaces verbose output and retains exit metadata", asyn
     tool_name: "Bash",
     tool_input: { command: "npm test" },
     tool_response: { stdout: output, exit_code: 2 },
-  }, defaultConfig, store);
+  }, resolveConfig(), store);
 
-  const hook = result?.hookSpecificOutput as { hookEventName: string; updatedToolOutput: string };
+  const hook = result?.hookSpecificOutput as {
+    hookEventName: string;
+    updatedToolOutput: { stdout: string; stderr: string; exit_code: number };
+  };
   assert.equal(hook.hookEventName, "PostToolUse");
-  assert.match(hook.updatedToolOutput, /\[token-saver\] test:/);
-  assert.match(hook.updatedToolOutput, /\[exit code: 2\]/);
+  assert.match(hook.updatedToolOutput.stdout, /\[token-saver\] test:/);
+  assert.equal(hook.updatedToolOutput.stderr, "");
+  assert.equal(hook.updatedToolOutput.exit_code, 2, "unrelated fields must be preserved");
+  assert.match(hook.updatedToolOutput.stdout, /\[exit code: 2\]/);
 });
 
 test("run_in_terminal verbose output is compacted with the shell policy", async (t) => {
@@ -37,21 +42,23 @@ test("run_in_terminal verbose output is compacted with the shell policy", async 
     tool_name: "run_in_terminal",
     tool_input: { command: "cargo build --release" },
     tool_response: output,
-  }, defaultConfig, store);
-  assert.match((result?.hookSpecificOutput as { updatedToolOutput: string }).updatedToolOutput, /\[token-saver\] shell:/);
+  }, resolveConfig(), store);
+  const updated = (result?.hookSpecificOutput as { updatedToolOutput: string }).updatedToolOutput;
+  assert.match(updated, /\[token-saver\] shell:/);
 });
 
-test("explicit file ranges and small output are not changed", async (t) => {
+test("small output and explicit ranges are not changed", async (t) => {
   const store = await storeFor(t);
+  const config = resolveConfig();
   const large = "x".repeat(5_000);
-  assert.equal(await handleQoderPostToolUse({
-    tool_name: "Read",
-    tool_input: { file_path: "a.ts", offset: 10, limit: 20 },
-    tool_response: large,
-  }, defaultConfig, store), undefined);
   assert.equal(await handleQoderPostToolUse({
     tool_name: "Bash",
     tool_input: { command: "pwd" },
     tool_response: "ok",
-  }, defaultConfig, store), undefined);
+  }, config, store), undefined);
+  assert.equal(await handleQoderPostToolUse({
+    tool_name: "Read",
+    tool_input: { file_path: "a.ts", offset: 10, limit: 20 },
+    tool_response: large,
+  }, config, store), undefined);
 });

@@ -45,6 +45,45 @@ export function extractToolOutput(response: unknown): string {
   return JSON.stringify(response);
 }
 
+function isTextBlocks(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (part) => typeof part === "string" || (typeof part === "object" && part !== null && "text" in part),
+    )
+  );
+}
+
+// Claude Code documents that a PostToolUse replacement "must match the tool's
+// output shape", so put the compacted text back into the same field the
+// original used instead of always substituting a plain string. Falls back to a
+// plain string when the original shape cannot be reproduced losslessly.
+export function reshapeToolOutput(response: unknown, text: string): unknown {
+  if (typeof response === "string" || typeof response !== "object" || response === null) return text;
+  if (Array.isArray(response)) {
+    return isTextBlocks(response) ? [{ type: "text", text }] : text;
+  }
+
+  const record = { ...(response as Record<string, unknown>) };
+  for (const key of ["content", "output", "text"] as const) {
+    const value = record[key];
+    if (typeof value === "string") {
+      record[key] = text;
+      return record;
+    }
+    if (isTextBlocks(value)) {
+      record[key] = [{ type: "text", text }];
+      return record;
+    }
+  }
+  if (typeof record.stdout === "string" || typeof record.stderr === "string") {
+    record.stdout = text;
+    record.stderr = "";
+    return record;
+  }
+  return text;
+}
+
 function metadataSuffix(response: unknown): string {
   if (typeof response !== "object" || response === null) return "";
   const record = response as Record<string, unknown>;
@@ -85,7 +124,10 @@ export async function handlePostToolUse(
   return {
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
-      updatedToolOutput: `${result.text}${metadataSuffix(payload.tool_response)}`,
+      updatedToolOutput: reshapeToolOutput(
+        payload.tool_response,
+        `${result.text}${metadataSuffix(payload.tool_response)}`,
+      ),
     },
   };
 }

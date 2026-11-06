@@ -20243,7 +20243,11 @@ function detectToolKind(toolName, toolInput) {
 // packages/core/src/config.ts
 var toolKinds = ["shell", "test", "search", "read"];
 var defaultConfig = {
-  enabledTools: [...toolKinds],
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
   maxOutputLines: 120,
   maxOutputBytes: 3e4,
   maxLineLength: 500,

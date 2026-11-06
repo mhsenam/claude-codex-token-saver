@@ -1,11 +1,14 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ArtifactStore, compactOutput, defaultConfig } from "../packages/core/src/index.js";
+import { ArtifactStore, compactOutput, resolveConfig } from "../packages/core/src/index.js";
 import type { ToolKind } from "../packages/core/src/index.js";
 
+// The benchmark measures every compaction policy, including read, which the
+// automatic-hook defaults leave off; pass an explicit all-tools config.
+const config = resolveConfig({ enabledTools: ["shell", "test", "search", "read"] });
 const root = await fs.mkdtemp(path.join(os.tmpdir(), "token-saver-benchmark-"));
-const store = new ArtifactStore(defaultConfig, root);
+const store = new ArtifactStore(config, root);
 const fixtures: Array<{ name: string; kind: ToolKind; input: string }> = [
   {
     name: "verbose shell log",
@@ -32,7 +35,7 @@ const fixtures: Array<{ name: string; kind: ToolKind; input: string }> = [
 try {
   const measurements = [];
   for (const fixture of fixtures) {
-    const result = await compactOutput({ ...fixture, config: defaultConfig, store });
+    const result = await compactOutput({ ...fixture, config, store });
     const originalTokens = Math.ceil(result.originalBytes / 4);
     const returnedTokens = Math.ceil(result.returnedBytes / 4);
     measurements.push({

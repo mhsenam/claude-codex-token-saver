@@ -3,7 +3,11 @@ import type { CompactionConfig, ToolKind } from "./types.js";
 const toolKinds: ToolKind[] = ["shell", "test", "search", "read"];
 
 export const defaultConfig: CompactionConfig = {
-  enabledTools: [...toolKinds],
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
   maxOutputLines: 120,
   maxOutputBytes: 30_000,
   maxLineLength: 500,

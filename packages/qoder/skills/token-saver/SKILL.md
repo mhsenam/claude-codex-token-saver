@@ -13,6 +13,6 @@ For operations expected to produce more than about 100 lines, prefer the token-s
 - `compact_search` for broad repository searches.
 - `compact_read` for large files when an exact range is not required.
 
-Use built-in tools for small outputs, exact edits, and precise file ranges. An explicit `startLine` in `compact_read` returns an exact uncompacted range.
+Use built-in tools for small outputs, exact edits, and precise file ranges. An explicit `startLine` in `compact_read` returns an exact uncompacted range. A compacted `compact_read` result is a partial view of the file; before editing a file you have only seen compacted, request an exact range with `startLine` or read the region you will modify.
 
 The PostToolUse hook compacts verbose built-in `Bash`, `Read`, `Grep`, and `run_in_terminal` results automatically, so most large outputs already arrive compacted with an artifact ID in the header.

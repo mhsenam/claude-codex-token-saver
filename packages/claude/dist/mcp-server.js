@@ -37148,7 +37148,11 @@ function detectToolKind(toolName, toolInput) {
 // packages/core/src/config.ts
 var toolKinds = ["shell", "test", "search", "read"];
 var defaultConfig = {
-  enabledTools: [...toolKinds],
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
   maxOutputLines: 120,
   maxOutputBytes: 3e4,
   maxLineLength: 500,
@@ -37254,7 +37258,8 @@ async function compactRead(options) {
     return `[${options.filePath}: lines ${start}\u2013${end} of ${allLines.length}]
 ${selected.join("\n")}`;
   }
-  const result2 = await compact(content, "read", options.config, options.store);
+  const config3 = options.config.enabledTools.includes("read") ? options.config : { ...options.config, enabledTools: [...options.config.enabledTools, "read"] };
+  const result2 = await compact(content, "read", config3, options.store);
   return result2.text;
 }
 async function compactSearch(options) {

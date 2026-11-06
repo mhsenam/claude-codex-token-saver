@@ -396,7 +396,11 @@ function detectToolKind(toolName, toolInput) {
 // packages/core/src/config.ts
 var toolKinds = ["shell", "test", "search", "read"];
 var defaultConfig = {
-  enabledTools: [...toolKinds],
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
   maxOutputLines: 120,
   maxOutputBytes: 3e4,
   maxLineLength: 500,
@@ -489,6 +493,35 @@ function extractToolOutput(response) {
   }
   return JSON.stringify(response);
 }
+function isTextBlocks(value) {
+  return Array.isArray(value) && value.every(
+    (part) => typeof part === "string" || typeof part === "object" && part !== null && "text" in part
+  );
+}
+function reshapeToolOutput(response, text) {
+  if (typeof response === "string" || typeof response !== "object" || response === null) return text;
+  if (Array.isArray(response)) {
+    return isTextBlocks(response) ? [{ type: "text", text }] : text;
+  }
+  const record = { ...response };
+  for (const key of ["content", "output", "text"]) {
+    const value = record[key];
+    if (typeof value === "string") {
+      record[key] = text;
+      return record;
+    }
+    if (isTextBlocks(value)) {
+      record[key] = [{ type: "text", text }];
+      return record;
+    }
+  }
+  if (typeof record.stdout === "string" || typeof record.stderr === "string") {
+    record.stdout = text;
+    record.stderr = "";
+    return record;
+  }
+  return text;
+}
 function metadataSuffix(response) {
   if (typeof response !== "object" || response === null) return "";
   const record = response;
@@ -517,7 +550,10 @@ async function handlePostToolUse(payload, config = configFromEnv(), store, defau
   return {
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
-      updatedToolOutput: `${result2.text}${metadataSuffix(payload.tool_response)}`
+      updatedToolOutput: reshapeToolOutput(
+        payload.tool_response,
+        `${result2.text}${metadataSuffix(payload.tool_response)}`
+      )
     }
   };
 }

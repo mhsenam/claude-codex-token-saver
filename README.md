@@ -28,7 +28,7 @@ TokenSaver uses **deterministic local compaction**, not another AI summarization
 | --- | --- | --- | --- | --- |
 | Compact verbose shell and test output | Automatic `PostToolUse` hook | `compact_run` MCP tool | Automatic `bash` hook | Automatic `PostToolUse` hook |
 | Compact broad repository searches | Automatic `Grep` hook | `compact_search` MCP tool | Automatic `grep` hook | Automatic `Grep` hook |
-| Compact large file reads | Automatic `Read` hook | `compact_read` MCP tool | Automatic `read` hook | Automatic `Read` hook |
+| Compact large file reads | Opt-in (`TOKEN_SAVER_TOOLS`) | `compact_read` MCP tool | Opt-in (`TOKEN_SAVER_TOOLS`) | Opt-in (`TOKEN_SAVER_TOOLS`) |
 | Suppress repeated identical output | Automatic | Automatic | Automatic | Automatic |
 | Rewrite verbose commands at the source | Not needed (output never reaches the API uncompacted) | Via `compact_run` | Automatic for simple test/build commands | Not needed (output never reaches the API uncompacted) |
 | Preserve explicitly requested file ranges | Yes | Yes | Yes | Yes |
@@ -44,8 +44,11 @@ Additional behavior:
 - Preserves test failures and nearby stack traces.
 - Groups search results by file with per-file limits.
 - Truncates exceptionally long lines, including Unicode-safe truncation.
+- Replacements mirror the original tool-output shape (content blocks, `stdout`/`stderr`, or plain string) instead of always substituting a plain string.
 - Fails open: the original result passes through if compaction fails.
 - Supports configurable retention and output limits.
+
+Automatic compaction of `Read`/`read` output is **off by default**: an agent that edits a file it has only seen as a head/tail preview can produce wrong edits. Large-file reads stay available through the explicit `compact_read` tool (which always compacts, since calling it is an explicit request), and automatic read compaction can be enabled with `TOKEN_SAVER_TOOLS=shell,test,search,read`.
 
 ## Quick start
 
@@ -159,7 +162,7 @@ TokenSaver works without configuration. Set environment variables to override de
 
 | Variable | Default | Purpose |
 | --- | ---: | --- |
-| `TOKEN_SAVER_TOOLS` | `shell,test,search,read` | Enabled compaction policies |
+| `TOKEN_SAVER_TOOLS` | `shell,test,search` | Enabled automatic compaction policies (`read` is opt-in; see above) |
 | `TOKEN_SAVER_MAX_LINES` | `120` | Output-line budget |
 | `TOKEN_SAVER_MAX_BYTES` | `30000` | Approximate output-byte budget |
 | `TOKEN_SAVER_MAX_LINE_LENGTH` | `500` | Characters retained per long line |
@@ -187,6 +190,14 @@ original: 184,320 B | returned: 21,140 B | estimated reduction: 88.5% (~40,795 t
 ```
 
 Statistics are local-only (`stats.jsonl` beside the artifact store), contain no command content, and are estimates: bytes divided by four, counting only outputs token-saver touched. They deliberately do not claim billed-cost savings — prompt caching (cache reads bill near 0.1x) and extra retrieval turns mean token reduction and cost reduction are related but distinct. Compare provider-reported usage with the plugin disabled for a billed-cost baseline.
+
+## Using alongside other token optimizers
+
+TokenSaver stacks safely with tools like RTK or output-sandboxing plugins, but compressing the same output twice wastes effort and multiplies the places where output is altered. One layer per output type is the goal:
+
+- If another tool already filters shell output (for example RTK's command rewriting), disable the overlapping policies: `TOKEN_SAVER_TOOLS=test,search` keeps token-saver's test and search policies while leaving bash output to the other tool.
+- Keep token-saver's distinct advantages: its full-output artifacts with exact line-range recovery (`output_slice`), duplicate suppression, and the `stats` report — most filtering tools have no recovery path.
+- Output that passes through another compressor first is simply re-measured by token-saver; below the size thresholds it passes through untouched.
 
 ## How it works
 
@@ -243,7 +254,7 @@ Useful commands:
 | `npm run package` | Create installable directories under `release/` |
 | `claude plugin validate packages/claude` | Validate the Claude plugin |
 
-The `packages/*/dist` bundles are tracked so marketplace installs work without a build step.
+The `packages/*/dist` bundles are tracked so marketplace installs work without a build step. To confirm an installed bundle matches the reviewed source, run `npm run build` and check `git diff -- packages/*/dist` is empty.
 
 ## Project structure
 

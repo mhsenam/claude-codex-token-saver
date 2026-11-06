@@ -57,7 +57,12 @@ export async function compactRead(options: {
     return `[${options.filePath}: lines ${start}–${end} of ${allLines.length}]\n${selected.join("\n")}`;
   }
 
-  const result = await compact(content, "read", options.config, options.store);
+  // Calling compact_read is an explicit request for compaction, so the read
+  // policy applies regardless of the automatic-hook defaults.
+  const config = options.config.enabledTools.includes("read")
+    ? options.config
+    : { ...options.config, enabledTools: [...options.config.enabledTools, "read" as const] };
+  const result = await compact(content, "read", config, options.store);
   return result.text;
 }
 
