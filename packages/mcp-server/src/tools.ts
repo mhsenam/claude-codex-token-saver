@@ -2,7 +2,13 @@ import { exec, execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import { ArtifactStore, compactOutput, detectToolKind } from "../../core/src/index.js";
+import {
+  ArtifactStore,
+  compactOutput,
+  detectToolKind,
+  formatStatsSummary,
+  summarizeStats,
+} from "../../core/src/index.js";
 import type { CompactionConfig } from "../../core/src/index.js";
 
 const execAsync = promisify(exec);
@@ -136,4 +142,8 @@ export async function outputSlice(options: {
     options.maxLines ?? 200,
   );
   return `[${slice.artifactId}: lines ${slice.startLine}–${slice.endLine} of ${slice.totalLines}]\n${slice.text}`;
+}
+
+export async function statsSummary(options: { store: ArtifactStore }): Promise<string> {
+  return formatStatsSummary(await summarizeStats(options.store.root));
 }

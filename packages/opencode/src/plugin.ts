@@ -5,7 +5,12 @@ import {
   compactOutput,
   configFromEnv,
   detectToolKind,
+  formatStatsSummary,
+  isVerboseCommand,
   preCompactInstructions,
+  recordStats,
+  rewriteVerboseCommand,
+  summarizeStats,
 } from "../../core/src/index.js";
 
 type PluginHooks = Awaited<ReturnType<Plugin>>;
@@ -34,7 +39,50 @@ export const TokenSaverPlugin: Plugin = async () => {
     },
   };
 
+  const stats = {
+    description:
+      "Show token-saver statistics: compactions, duplicates avoided, retrievals, and estimated token reduction for stored sessions.",
+    args: {},
+    execute: async () => {
+      try {
+        return formatStatsSummary(await summarizeStats(store.root));
+      } catch (error) {
+        return `token-saver error: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    },
+  };
+
   return {
+    "tool.execute.before": async (input, output) => {
+      try {
+        if (input.tool !== "bash" || !config.rewriteCommands) return;
+        const args = output.args;
+        const command = typeof args?.command === "string" ? args.command : undefined;
+        if (!command || !isVerboseCommand(command)) return;
+        const sessionId = input.sessionID || "opencode";
+        const reserved = await store.reserve(sessionId);
+        output.args = {
+          ...args,
+          command: rewriteVerboseCommand({
+            command,
+            // POSIX shells choke on backslash paths; forward slashes work everywhere.
+            filePath: reserved.filePath.replaceAll("\\", "/"),
+            artifactId: reserved.artifactId,
+            tailLines: Math.max(20, config.maxOutputLines - 2),
+          }),
+        };
+        await recordStats(store.root, {
+          type: "rewrite",
+          session: sessionId,
+          kind: detectToolKind("bash", { command }),
+          commandBytes: Buffer.byteLength(command),
+        });
+      } catch (error) {
+        if (process.env.TOKEN_SAVER_DEBUG === "1") {
+          process.stderr.write(`token-saver: ${error instanceof Error ? error.message : String(error)}\n`);
+        }
+      }
+    },
     "tool.execute.after": async (input, output) => {
       try {
         if (!compactableTools.has(input.tool)) return;
@@ -72,7 +120,7 @@ export const TokenSaverPlugin: Plugin = async () => {
     // @opencode-ai/plugin types custom-tool args against its own zod copy, which is
     // structurally incompatible with the workspace zod bundled here; opencode
     // validates against the runtime objects, so only that declaration is bypassed.
-    tool: { output_slice: outputSlice } as unknown as NonNullable<PluginHooks["tool"]>,
+    tool: { output_slice: outputSlice, stats } as unknown as NonNullable<PluginHooks["tool"]>,
   };
 };
 

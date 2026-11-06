@@ -1,12 +1,37 @@
 // packages/core/src/artifact-store.ts
 import { createHash, randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
+import { promises as fs2 } from "node:fs";
 import os from "node:os";
+import path2 from "node:path";
+
+// packages/core/src/stats.ts
+import { promises as fs } from "node:fs";
 import path from "node:path";
+var statsFileName = "stats.jsonl";
+function statsFilePath(root) {
+  return path.join(root, statsFileName);
+}
+function statsEnabled() {
+  return process.env.TOKEN_SAVER_STATS !== "0";
+}
+async function recordStats(root, event) {
+  if (!statsEnabled()) return;
+  try {
+    const recorded = { ...event, ts: Date.now() };
+    await fs.appendFile(statsFilePath(root), `${JSON.stringify(recorded)}
+`, { encoding: "utf8" });
+  } catch {
+  }
+}
+
+// packages/core/src/artifact-store.ts
 var artifactPattern = /^([a-zA-Z0-9_-]{1,64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 function sessionKey(sessionId) {
   if (/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) return sessionId;
   return createHash("sha256").update(sessionId).digest("hex").slice(0, 32);
+}
+function sessionDirectory(root, sessionId) {
+  return path2.join(root, sessionKey(sessionId));
 }
 function lines(text) {
   return text.length === 0 ? [] : text.split(/\r\n|\r|\n/);
@@ -16,17 +41,24 @@ var ArtifactStore = class {
   retentionHours;
   lastCleanup = 0;
   constructor(config, root) {
-    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path.join(os.homedir(), ".token-saver", "outputs");
+    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path2.join(os.homedir(), ".token-saver", "outputs");
     this.retentionHours = config.retentionHours;
   }
   async save(output, sessionId = "default") {
     const session = sessionKey(sessionId);
     const id = randomUUID();
-    const directory = path.join(this.root, session);
-    await fs.mkdir(directory, { recursive: true, mode: 448 });
-    await fs.writeFile(path.join(directory, `${id}.log`), output, { encoding: "utf8", mode: 384, flag: "wx" });
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    await fs2.writeFile(path2.join(directory, `${id}.log`), output, { encoding: "utf8", mode: 384, flag: "wx" });
     await this.cleanupExpired();
     return `${session}.${id}`;
+  }
+  async reserve(sessionId = "default") {
+    const session = sessionKey(sessionId);
+    const id = randomUUID();
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    return { artifactId: `${session}.${id}`, filePath: path2.join(directory, `${id}.log`) };
   }
   async readSlice(artifactId, startLine = 1, maxLines = 200) {
     const match = artifactPattern.exec(artifactId);
@@ -35,12 +67,13 @@ var ArtifactStore = class {
     if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > 1e3) {
       throw new Error("maxLines must be between 1 and 1000");
     }
-    const filePath = path.join(this.root, match[1], `${match[2]}.log`);
-    const output = await fs.readFile(filePath, "utf8");
+    const filePath = path2.join(this.root, match[1], `${match[2]}.log`);
+    const output = await fs2.readFile(filePath, "utf8");
     const allLines = lines(output);
     const start = Math.min(startLine - 1, allLines.length);
     const selected = allLines.slice(start, start + maxLines);
     const endLine = selected.length === 0 ? start : start + selected.length;
+    await recordStats(this.root, { type: "retrieve", session: match[1], artifactId, startLine, maxLines });
     return {
       artifactId,
       startLine: start + 1,
@@ -56,24 +89,73 @@ var ArtifactStore = class {
     const cutoff = now - this.retentionHours * 60 * 60 * 1e3;
     let sessions;
     try {
-      sessions = await fs.readdir(this.root, { withFileTypes: true });
+      sessions = await fs2.readdir(this.root, { withFileTypes: true });
     } catch (error) {
       if (error.code === "ENOENT") return;
       throw error;
     }
     for (const session of sessions) {
       if (!session.isDirectory() || !/^[a-zA-Z0-9_-]{1,64}$/.test(session.name)) continue;
-      const directory = path.join(this.root, session.name);
-      const files = await fs.readdir(directory, { withFileTypes: true });
+      const directory = path2.join(this.root, session.name);
+      const files = await fs2.readdir(directory, { withFileTypes: true });
       for (const file of files) {
         if (!file.isFile() || !/^[0-9a-f-]{36}\.log$/.test(file.name)) continue;
-        const filePath = path.join(directory, file.name);
-        const stat = await fs.stat(filePath);
-        if (stat.mtimeMs < cutoff) await fs.rm(filePath);
+        const filePath = path2.join(directory, file.name);
+        const stat = await fs2.stat(filePath);
+        if (stat.mtimeMs < cutoff) await fs2.rm(filePath);
       }
-      const remaining = await fs.readdir(directory);
-      if (remaining.length === 0) await fs.rmdir(directory);
+      const remaining = await fs2.readdir(directory);
+      if (remaining.length === 0) await fs2.rmdir(directory);
     }
+  }
+};
+
+// packages/core/src/dedup.ts
+import { createHash as createHash2 } from "node:crypto";
+import { promises as fs3 } from "node:fs";
+import path3 from "node:path";
+var indexFileName = "dedup.json";
+function outputHash(input) {
+  return createHash2("sha256").update(input).digest("hex").slice(0, 32);
+}
+var DedupIndex = class {
+  filePath;
+  retentionHours;
+  entries;
+  constructor(root, sessionId, retentionHours) {
+    this.filePath = path3.join(sessionDirectory(root, sessionId), indexFileName);
+    this.retentionHours = retentionHours;
+  }
+  async lookup(hash) {
+    const entries = await this.load();
+    const entry = entries[hash];
+    if (!entry) return void 0;
+    if (Date.now() - entry.ts > this.retentionHours * 60 * 60 * 1e3) return void 0;
+    return entry;
+  }
+  async remember(hash, entry) {
+    const entries = await this.load();
+    const cutoff = Date.now() - this.retentionHours * 60 * 60 * 1e3;
+    for (const key of Object.keys(entries)) {
+      if (entries[key].ts < cutoff) delete entries[key];
+    }
+    entries[hash] = entry;
+    try {
+      await fs3.writeFile(`${this.filePath}.tmp`, JSON.stringify(entries), { encoding: "utf8", mode: 384 });
+      await fs3.rename(`${this.filePath}.tmp`, this.filePath);
+    } catch {
+    }
+  }
+  async load() {
+    if (this.entries) return this.entries;
+    try {
+      const raw = await fs3.readFile(this.filePath, "utf8");
+      const parsed = JSON.parse(raw);
+      this.entries = parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      this.entries = {};
+    }
+    return this.entries;
   }
 };
 
@@ -238,10 +320,60 @@ async function compactOutput(options) {
   const compacted = compactText(options.input, options.kind, options.config);
   if (!compacted.compacted) return compacted;
   const store = options.store ?? new ArtifactStore(options.config);
-  const artifactId = await store.save(options.input, options.sessionId);
+  const sessionId = options.sessionId ?? "default";
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    const hash = outputHash(options.input);
+    const existing = await index.lookup(hash);
+    if (existing) {
+      const preview = options.input.replace(ansiPattern, "").split(/\r\n|\r|\n/).slice(0, options.config.dedupPreviewLines).join("\n");
+      const stub = [
+        `[token-saver] duplicate: identical output was already stored (artifactId=${existing.artifactId}, ${existing.lines} lines).`,
+        preview,
+        "[\u2026 remaining lines are identical to the earlier result; use output_slice to retrieve any line range \u2026]"
+      ].join("\n");
+      await recordStats(store.root, {
+        type: "dedup",
+        session: sessionId,
+        kind: options.kind,
+        originalBytes: compacted.originalBytes,
+        returnedBytes: Buffer.byteLength(stub),
+        artifactId: existing.artifactId
+      });
+      return {
+        text: stub,
+        compacted: true,
+        deduped: true,
+        artifactId: existing.artifactId,
+        originalLines: compacted.originalLines,
+        originalBytes: compacted.originalBytes,
+        returnedLines: lineCount(stub),
+        returnedBytes: Buffer.byteLength(stub),
+        omittedLines: Math.max(0, compacted.originalLines - options.config.dedupPreviewLines)
+      };
+    }
+  }
+  const artifactId = await store.save(options.input, sessionId);
   const header = `[token-saver] ${options.kind}: ${compacted.originalLines} lines/${compacted.originalBytes} B \u2192 ${compacted.returnedLines} lines/${compacted.returnedBytes} B. Full output: ${artifactId}; use token-saver output_slice with startLine and maxLines.`;
   const text = `${header}
 ${compacted.text}`;
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    await index.remember(outputHash(options.input), {
+      artifactId,
+      bytes: compacted.originalBytes,
+      lines: compacted.originalLines,
+      ts: Date.now()
+    });
+  }
+  await recordStats(store.root, {
+    type: "compact",
+    session: sessionId,
+    kind: options.kind,
+    originalBytes: compacted.originalBytes,
+    returnedBytes: Buffer.byteLength(text),
+    artifactId
+  });
   return {
     ...compacted,
     text,
@@ -273,12 +405,21 @@ var defaultConfig = {
   searchPerFile: 8,
   contextLines: 2,
   retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true
 };
 function integer(value, fallback, min, max) {
   if (value === void 0) return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+function flag(value, fallback) {
+  if (value === void 0) return fallback;
+  if (value === "0" || value === "false") return false;
+  if (value === "1" || value === "true") return true;
+  return fallback;
 }
 function resolveConfig(overrides = {}) {
   const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
@@ -292,7 +433,10 @@ function resolveConfig(overrides = {}) {
     searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
     contextLines: overrides.contextLines ?? defaultConfig.contextLines,
     retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
-    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes
+    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
+    dedup: overrides.dedup ?? defaultConfig.dedup,
+    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
+    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands
   };
 }
 function configFromEnv(env = process.env) {
@@ -305,7 +449,15 @@ function configFromEnv(env = process.env) {
     headLines: integer(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
     tailLines: integer(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
     searchPerFile: integer(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
-    retentionHours: integer(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720)
+    retentionHours: integer(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
+    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
+    dedupPreviewLines: integer(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
+    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
+    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
+    rewriteCommands: flag(
+      env.TOKEN_SAVER_REWRITE,
+      defaultConfig.rewriteCommands && process.platform !== "win32"
+    )
   });
 }
 

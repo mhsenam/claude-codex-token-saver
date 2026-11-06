@@ -29,8 +29,11 @@ TokenSaver uses **deterministic local compaction**, not another AI summarization
 | Compact verbose shell and test output | Automatic `PostToolUse` hook | `compact_run` MCP tool | Automatic `bash` hook | Automatic `PostToolUse` hook |
 | Compact broad repository searches | Automatic `Grep` hook | `compact_search` MCP tool | Automatic `grep` hook | Automatic `Grep` hook |
 | Compact large file reads | Automatic `Read` hook | `compact_read` MCP tool | Automatic `read` hook | Automatic `Read` hook |
+| Suppress repeated identical output | Automatic | Automatic | Automatic | Automatic |
+| Rewrite verbose commands at the source | Not needed (output never reaches the API uncompacted) | Via `compact_run` | Automatic for simple test/build commands | Not needed (output never reaches the API uncompacted) |
 | Preserve explicitly requested file ranges | Yes | Yes | Yes | Yes |
 | Retrieve omitted output | `output_slice` | `output_slice` | `output_slice` plugin tool | `output_slice` MCP tool |
+| Report accumulated savings | `stats` tool | `stats` tool | `stats` plugin tool | `stats` tool |
 | Improve automatic context compaction | `PreCompact` guidance | `PreCompact` guidance | `experimental.session.compacting` guidance | `PreCompact` guidance |
 | Store full output locally | Yes | Yes | Yes | Yes |
 
@@ -164,10 +167,26 @@ TokenSaver works without configuration. Set environment variables to override de
 | `TOKEN_SAVER_TAIL_LINES` | `60` | Lines retained from the end |
 | `TOKEN_SAVER_SEARCH_PER_FILE` | `8` | Search matches retained per file |
 | `TOKEN_SAVER_RETENTION_HOURS` | `24` | Full-output artifact retention |
+| `TOKEN_SAVER_DEDUP` | `1` | Return a small stub instead of re-compacting byte-identical repeat output |
+| `TOKEN_SAVER_DEDUP_PREVIEW_LINES` | `20` | Lines kept in a duplicate stub |
+| `TOKEN_SAVER_REWRITE` | `1` (`0` on Windows) | opencode: redirect whitelisted test/build commands to an artifact and print only a tail |
+| `TOKEN_SAVER_STATS` | `1` | Append local JSONL usage statistics (set `0` to disable) |
 | `TOKEN_SAVER_DATA_DIR` | `~/.token-saver/outputs` | Artifact storage directory |
 | `TOKEN_SAVER_DEBUG` | unset | Set to `1` for Claude hook errors on stderr |
 
 Set `TOKEN_SAVER_TOOLS` to a comma-separated subset of policies to limit automatic compaction, or disable the plugin for a complete bypass.
+
+## Measuring impact
+
+Call the `stats` tool (MCP on Claude Code, Codex, and Qoder; plugin tool on opencode) to report accumulated savings:
+
+```text
+[token-saver] session statistics (bytes/4 token estimates, not billed tokens)
+compactions: 12 | duplicates avoided: 4 | retrievals: 2 | commands rewritten: 3 | sessions: 2
+original: 184,320 B | returned: 21,140 B | estimated reduction: 88.5% (~40,795 tokens)
+```
+
+Statistics are local-only (`stats.jsonl` beside the artifact store), contain no command content, and are estimates: bytes divided by four, counting only outputs token-saver touched. They deliberately do not claim billed-cost savings — prompt caching (cache reads bill near 0.1x) and extra retrieval turns mean token reduction and cost reduction are related but distinct. Compare provider-reported usage with the plugin disabled for a billed-cost baseline.
 
 ## How it works
 
@@ -247,8 +266,13 @@ scripts/         # Build, package, and smoke-test automation
 - Lossy context can still result from aggressive limits; retrieve the artifact when exact omitted details matter.
 - Codex does not currently have feature parity with Claude's automatic `PostToolUse` output replacement, so its MCP tools must be selected by the agent or requested explicitly.
 - opencode's hook covers its built-in `bash`, `read`, and `grep` tools only (MCP tool outputs are not hook-addressable), opencode truncates exceptionally large tool output before plugins run, and its TUI may display the original output while the model receives the compacted version.
+- opencode source-side command rewriting applies only to simple whitelisted test/build commands (no pipes, redirections, or command substitution) and defaults to off on Windows (`TOKEN_SAVER_REWRITE=1` to enable) because the host shell is not guaranteed to be POSIX.
 - Qoder reads hook configuration at startup, so restart after changing hooks or MCP settings; Qoder plugins cannot bundle rules, so the optional tool-preference rule is installed separately.
 - Very large commands that exceed the process buffer must be narrowed or split before compaction.
+
+## Roadmap
+
+History eviction (replacing old tool results in the outgoing request with artifact placeholders, keeping recent turns verbatim) is planned next. It is gated on real `stats` data because rewriting request history invalidates prompt-cache prefixes, and cache writes bill at 1.25x versus 0.1x for cache reads; eviction must be batched and thresholded to net out positive.
 
 ## Contributing
 

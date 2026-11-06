@@ -2,11 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { ArtifactStore, configFromEnv } from "../../core/src/index.js";
-import { compactRead, compactRun, compactSearch, outputSlice } from "./tools.js";
+import { compactRead, compactRun, compactSearch, outputSlice, statsSummary } from "./tools.js";
 
 const config = configFromEnv();
 const store = new ArtifactStore(config);
-const server = new McpServer({ name: "token-saver", version: "0.1.0" });
+const server = new McpServer({ name: "token-saver", version: "0.3.0" });
 
 function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
@@ -93,6 +93,22 @@ server.registerTool(
   async ({ artifactId, startLine, maxLines }) => {
     try {
       return text(await outputSlice({ artifactId, startLine, maxLines, store }));
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+server.registerTool(
+  "stats",
+  {
+    title: "Token-saver statistics",
+    description: "Show token-saver statistics: compactions, duplicates avoided, retrievals, and estimated token reduction across stored sessions.",
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return text(await statsSummary({ store }));
     } catch (error) {
       return failure(error);
     }

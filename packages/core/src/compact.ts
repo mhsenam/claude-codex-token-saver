@@ -1,4 +1,6 @@
 import { ArtifactStore } from "./artifact-store.js";
+import { DedupIndex, outputHash } from "./dedup.js";
+import { recordStats } from "./stats.js";
 import type {
   CompactionConfig,
   CompactionResult,
@@ -10,6 +12,37 @@ const ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)/g;
 const importantTestLine = /\b(?:fail(?:ed|ure|ing)?|errors?|exceptions?|assertion|unhandled|panicked|segmentation fault)\b|(?:^|\s)(?:FAIL|ERROR)(?:\s|$)/i;
 const testSummaryLine = /\b(?:test suites?|tests?|passed|failures?|errors?|warnings?|duration|elapsed|exit code)\s*[:0-9]/i;
 const testCommand = /\b(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|build|lint|typecheck)|vitest|jest|pytest|go\s+test|cargo\s+test|dotnet\s+test|mvn\s+test|gradle|tsc)\b/i;
+const unsafeForRewrite = /[|<>&;`$\n]/;
+
+export function isVerboseCommand(command: string): boolean {
+  if (typeof command !== "string") return false;
+  if (command.length === 0 || command.length > 2_000) return false;
+  if (unsafeForRewrite.test(command)) return false;
+  if (command.includes("token-saver")) return false;
+  return testCommand.test(command);
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+export function rewriteVerboseCommand(options: {
+  command: string;
+  filePath: string;
+  artifactId: string;
+  tailLines?: number;
+}): string {
+  const tail = options.tailLines ?? 120;
+  const log = shellQuote(options.filePath);
+  return [
+    `__ts_log=${log}`,
+    `${options.command} > "$__ts_log" 2>&1`,
+    "__ts_code=$?",
+    `tail -n ${tail} "$__ts_log"`,
+    `printf '\\n[token-saver] full output: ${options.artifactId} (exit %s); use output_slice with startLine and maxLines\\n' "$__ts_code"`,
+    "exit $__ts_code",
+  ].join("; ");
+}
 
 function lineCount(text: string): number {
   return text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
@@ -216,9 +249,67 @@ export async function compactOutput(options: {
   if (!compacted.compacted) return compacted;
 
   const store = options.store ?? new ArtifactStore(options.config);
-  const artifactId = await store.save(options.input, options.sessionId);
+  const sessionId = options.sessionId ?? "default";
+
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    const hash = outputHash(options.input);
+    const existing = await index.lookup(hash);
+    if (existing) {
+      const preview = options.input
+        .replace(ansiPattern, "")
+        .split(/\r\n|\r|\n/)
+        .slice(0, options.config.dedupPreviewLines)
+        .join("\n");
+      const stub = [
+        `[token-saver] duplicate: identical output was already stored (artifactId=${existing.artifactId}, ${existing.lines} lines).`,
+        preview,
+        "[… remaining lines are identical to the earlier result; use output_slice to retrieve any line range …]",
+      ].join("\n");
+      await recordStats(store.root, {
+        type: "dedup",
+        session: sessionId,
+        kind: options.kind,
+        originalBytes: compacted.originalBytes,
+        returnedBytes: Buffer.byteLength(stub),
+        artifactId: existing.artifactId,
+      });
+      return {
+        text: stub,
+        compacted: true,
+        deduped: true,
+        artifactId: existing.artifactId,
+        originalLines: compacted.originalLines,
+        originalBytes: compacted.originalBytes,
+        returnedLines: lineCount(stub),
+        returnedBytes: Buffer.byteLength(stub),
+        omittedLines: Math.max(0, compacted.originalLines - options.config.dedupPreviewLines),
+      };
+    }
+  }
+
+  const artifactId = await store.save(options.input, sessionId);
   const header = `[token-saver] ${options.kind}: ${compacted.originalLines} lines/${compacted.originalBytes} B → ${compacted.returnedLines} lines/${compacted.returnedBytes} B. Full output: ${artifactId}; use token-saver output_slice with startLine and maxLines.`;
   const text = `${header}\n${compacted.text}`;
+
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    await index.remember(outputHash(options.input), {
+      artifactId,
+      bytes: compacted.originalBytes,
+      lines: compacted.originalLines,
+      ts: Date.now(),
+    });
+  }
+  await recordStats(store.root, {
+    type: "compact",
+    session: sessionId,
+    kind: options.kind,
+    originalBytes: compacted.originalBytes,
+    returnedBytes: Buffer.byteLength(text),
+    artifactId,
+  });
+
   return {
     ...compacted,
     text,

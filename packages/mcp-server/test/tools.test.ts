@@ -6,7 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 import { defaultConfig } from "../../core/src/index.js";
-import { compactRead, compactRun, compactSearch, outputSlice } from "../src/tools.js";
+import { compactRead, compactRun, compactSearch, outputSlice, statsSummary } from "../src/tools.js";
 import { testStore } from "./helpers.js";
 
 const execFileAsync = promisify(execFile);
@@ -84,4 +84,21 @@ test("compact_search rejects paths outside the project before executing", async 
     compactSearch({ pattern: "needle", paths: [".."], config: defaultConfig, store }),
     /inside the current project/,
   );
+});
+
+test("statsSummary reports compaction and duplicate suppression", async (t) => {
+  await projectFor(t);
+  const store = testStore(path.join(process.cwd(), "artifacts"));
+  const lines = Array.from({ length: 500 }, (_, index) => `line ${index + 1}`);
+  await fs.writeFile("large.txt", lines.join("\n"));
+
+  const first = await compactRead({ filePath: "large.txt", config: defaultConfig, store });
+  assert.match(first, /\[token-saver\] read:/);
+  const second = await compactRead({ filePath: "large.txt", config: defaultConfig, store });
+  assert.match(second, /\[token-saver\] duplicate:/);
+
+  const summary = await statsSummary({ store });
+  assert.match(summary, /compactions: 1/);
+  assert.match(summary, /duplicates avoided: 1/);
+  assert.match(summary, /estimated reduction:/);
 });

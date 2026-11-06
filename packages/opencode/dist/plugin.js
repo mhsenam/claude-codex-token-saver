@@ -821,10 +821,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -1164,11 +1164,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path2, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -1630,16 +1630,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path2 = []) => {
+  const processError = (error63, path4 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -1678,17 +1678,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path2 = []) => {
+  const processError = (error63, path4 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -1727,8 +1727,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path2 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path2) {
+  const path4 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path4) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -18866,13 +18866,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path2 = ref.slice(1).split("/").filter(Boolean);
-  if (path2.length === 0) {
+  const path4 = ref.slice(1).split("/").filter(Boolean);
+  if (path4.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path2[0] === defsKey) {
-    const key = path2[1] === void 0 ? void 0 : decodeJSONPointerSegment(path2[1]);
+  if (path4[0] === defsKey) {
+    const key = path4[1] === void 0 ? void 0 : decodeJSONPointerSegment(path4[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -19723,13 +19723,139 @@ function date4(params) {
 
 // packages/core/src/artifact-store.ts
 import { createHash, randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
+import { promises as fs2 } from "node:fs";
 import os from "node:os";
+import path2 from "node:path";
+
+// packages/core/src/stats.ts
+import { promises as fs } from "node:fs";
 import path from "node:path";
+var statsFileName = "stats.jsonl";
+function statsFilePath(root) {
+  return path.join(root, statsFileName);
+}
+function statsEnabled() {
+  return process.env.TOKEN_SAVER_STATS !== "0";
+}
+async function recordStats(root, event) {
+  if (!statsEnabled()) return;
+  try {
+    const recorded = { ...event, ts: Date.now() };
+    await fs.appendFile(statsFilePath(root), `${JSON.stringify(recorded)}
+`, { encoding: "utf8" });
+  } catch {
+  }
+}
+function emptyKindStats() {
+  return {
+    compactedCount: 0,
+    dedupedCount: 0,
+    originalBytes: 0,
+    returnedBytes: 0,
+    dedupedOriginalBytes: 0,
+    dedupedReturnedBytes: 0,
+    rewrites: 0
+  };
+}
+function asNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+async function summarizeStats(root) {
+  const summary = {
+    sessions: 0,
+    compactions: 0,
+    dedupHits: 0,
+    retrievals: 0,
+    rewrites: 0,
+    originalBytes: 0,
+    returnedBytes: 0,
+    dedupedOriginalBytes: 0,
+    dedupedReturnedBytes: 0,
+    estimatedTokensSaved: 0,
+    estimatedReductionPercent: 0,
+    perKind: {}
+  };
+  let raw;
+  try {
+    raw = await fs.readFile(statsFilePath(root), "utf8");
+  } catch {
+    return summary;
+  }
+  const sessions = /* @__PURE__ */ new Set();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!event || typeof event.type !== "string") continue;
+    sessions.add(String(event.session));
+    if (event.type === "compact" || event.type === "dedup") {
+      const kindStats = summary.perKind[String(event.kind)] ?? emptyKindStats();
+      const originalBytes = asNumber(event.originalBytes);
+      const returnedBytes = asNumber(event.returnedBytes);
+      if (event.type === "compact") {
+        summary.compactions += 1;
+        summary.originalBytes += originalBytes;
+        summary.returnedBytes += returnedBytes;
+        kindStats.compactedCount += 1;
+        kindStats.originalBytes += originalBytes;
+        kindStats.returnedBytes += returnedBytes;
+      } else {
+        summary.dedupHits += 1;
+        summary.dedupedOriginalBytes += originalBytes;
+        summary.dedupedReturnedBytes += returnedBytes;
+        kindStats.dedupedCount += 1;
+        kindStats.dedupedOriginalBytes += originalBytes;
+        kindStats.dedupedReturnedBytes += returnedBytes;
+      }
+      summary.perKind[String(event.kind)] = kindStats;
+    } else if (event.type === "retrieve") {
+      summary.retrievals += 1;
+    } else if (event.type === "rewrite") {
+      summary.rewrites += 1;
+      const kindStats = summary.perKind[String(event.kind) ?? "shell"] ?? emptyKindStats();
+      kindStats.rewrites += 1;
+      summary.perKind[String(event.kind) ?? "shell"] = kindStats;
+    }
+  }
+  summary.sessions = sessions.size;
+  const originalTotal = summary.originalBytes + summary.dedupedOriginalBytes;
+  const returnedTotal = summary.returnedBytes + summary.dedupedReturnedBytes;
+  summary.estimatedTokensSaved = Math.round((originalTotal - returnedTotal) / 4);
+  summary.estimatedReductionPercent = originalTotal > 0 ? Math.round((originalTotal - returnedTotal) / originalTotal * 1e3) / 10 : 0;
+  return summary;
+}
+function formatStatsSummary(summary) {
+  const lines2 = [
+    "[token-saver] session statistics (bytes/4 token estimates, not billed tokens)",
+    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | sessions: ${summary.sessions}`,
+    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)`
+  ];
+  const kinds = Object.entries(summary.perKind);
+  if (kinds.length > 0) {
+    lines2.push(
+      "per kind: " + kinds.map(([kind, stats]) => {
+        const parts = [`${stats.compactedCount} compacted`];
+        if (stats.dedupedCount > 0) parts.push(`${stats.dedupedCount} deduped`);
+        if (stats.rewrites > 0) parts.push(`${stats.rewrites} rewritten`);
+        return `${kind}: ${parts.join(", ")}`;
+      }).join("; ")
+    );
+  }
+  return lines2.join("\n");
+}
+
+// packages/core/src/artifact-store.ts
 var artifactPattern = /^([a-zA-Z0-9_-]{1,64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 function sessionKey(sessionId) {
   if (/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) return sessionId;
   return createHash("sha256").update(sessionId).digest("hex").slice(0, 32);
+}
+function sessionDirectory(root, sessionId) {
+  return path2.join(root, sessionKey(sessionId));
 }
 function lines(text) {
   return text.length === 0 ? [] : text.split(/\r\n|\r|\n/);
@@ -19739,17 +19865,24 @@ var ArtifactStore = class {
   retentionHours;
   lastCleanup = 0;
   constructor(config2, root) {
-    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path.join(os.homedir(), ".token-saver", "outputs");
+    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path2.join(os.homedir(), ".token-saver", "outputs");
     this.retentionHours = config2.retentionHours;
   }
   async save(output2, sessionId = "default") {
     const session = sessionKey(sessionId);
     const id = randomUUID();
-    const directory = path.join(this.root, session);
-    await fs.mkdir(directory, { recursive: true, mode: 448 });
-    await fs.writeFile(path.join(directory, `${id}.log`), output2, { encoding: "utf8", mode: 384, flag: "wx" });
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    await fs2.writeFile(path2.join(directory, `${id}.log`), output2, { encoding: "utf8", mode: 384, flag: "wx" });
     await this.cleanupExpired();
     return `${session}.${id}`;
+  }
+  async reserve(sessionId = "default") {
+    const session = sessionKey(sessionId);
+    const id = randomUUID();
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    return { artifactId: `${session}.${id}`, filePath: path2.join(directory, `${id}.log`) };
   }
   async readSlice(artifactId, startLine = 1, maxLines = 200) {
     const match = artifactPattern.exec(artifactId);
@@ -19758,12 +19891,13 @@ var ArtifactStore = class {
     if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > 1e3) {
       throw new Error("maxLines must be between 1 and 1000");
     }
-    const filePath = path.join(this.root, match[1], `${match[2]}.log`);
-    const output2 = await fs.readFile(filePath, "utf8");
+    const filePath = path2.join(this.root, match[1], `${match[2]}.log`);
+    const output2 = await fs2.readFile(filePath, "utf8");
     const allLines = lines(output2);
     const start = Math.min(startLine - 1, allLines.length);
     const selected = allLines.slice(start, start + maxLines);
     const endLine = selected.length === 0 ? start : start + selected.length;
+    await recordStats(this.root, { type: "retrieve", session: match[1], artifactId, startLine, maxLines });
     return {
       artifactId,
       startLine: start + 1,
@@ -19779,24 +19913,73 @@ var ArtifactStore = class {
     const cutoff = now - this.retentionHours * 60 * 60 * 1e3;
     let sessions;
     try {
-      sessions = await fs.readdir(this.root, { withFileTypes: true });
+      sessions = await fs2.readdir(this.root, { withFileTypes: true });
     } catch (error62) {
       if (error62.code === "ENOENT") return;
       throw error62;
     }
     for (const session of sessions) {
       if (!session.isDirectory() || !/^[a-zA-Z0-9_-]{1,64}$/.test(session.name)) continue;
-      const directory = path.join(this.root, session.name);
-      const files = await fs.readdir(directory, { withFileTypes: true });
+      const directory = path2.join(this.root, session.name);
+      const files = await fs2.readdir(directory, { withFileTypes: true });
       for (const file2 of files) {
         if (!file2.isFile() || !/^[0-9a-f-]{36}\.log$/.test(file2.name)) continue;
-        const filePath = path.join(directory, file2.name);
-        const stat = await fs.stat(filePath);
-        if (stat.mtimeMs < cutoff) await fs.rm(filePath);
+        const filePath = path2.join(directory, file2.name);
+        const stat = await fs2.stat(filePath);
+        if (stat.mtimeMs < cutoff) await fs2.rm(filePath);
       }
-      const remaining = await fs.readdir(directory);
-      if (remaining.length === 0) await fs.rmdir(directory);
+      const remaining = await fs2.readdir(directory);
+      if (remaining.length === 0) await fs2.rmdir(directory);
     }
+  }
+};
+
+// packages/core/src/dedup.ts
+import { createHash as createHash2 } from "node:crypto";
+import { promises as fs3 } from "node:fs";
+import path3 from "node:path";
+var indexFileName = "dedup.json";
+function outputHash(input2) {
+  return createHash2("sha256").update(input2).digest("hex").slice(0, 32);
+}
+var DedupIndex = class {
+  filePath;
+  retentionHours;
+  entries;
+  constructor(root, sessionId, retentionHours) {
+    this.filePath = path3.join(sessionDirectory(root, sessionId), indexFileName);
+    this.retentionHours = retentionHours;
+  }
+  async lookup(hash2) {
+    const entries = await this.load();
+    const entry = entries[hash2];
+    if (!entry) return void 0;
+    if (Date.now() - entry.ts > this.retentionHours * 60 * 60 * 1e3) return void 0;
+    return entry;
+  }
+  async remember(hash2, entry) {
+    const entries = await this.load();
+    const cutoff = Date.now() - this.retentionHours * 60 * 60 * 1e3;
+    for (const key of Object.keys(entries)) {
+      if (entries[key].ts < cutoff) delete entries[key];
+    }
+    entries[hash2] = entry;
+    try {
+      await fs3.writeFile(`${this.filePath}.tmp`, JSON.stringify(entries), { encoding: "utf8", mode: 384 });
+      await fs3.rename(`${this.filePath}.tmp`, this.filePath);
+    } catch {
+    }
+  }
+  async load() {
+    if (this.entries) return this.entries;
+    try {
+      const raw = await fs3.readFile(this.filePath, "utf8");
+      const parsed = JSON.parse(raw);
+      this.entries = parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      this.entries = {};
+    }
+    return this.entries;
   }
 };
 
@@ -19805,6 +19988,29 @@ var ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)/g;
 var importantTestLine = /\b(?:fail(?:ed|ure|ing)?|errors?|exceptions?|assertion|unhandled|panicked|segmentation fault)\b|(?:^|\s)(?:FAIL|ERROR)(?:\s|$)/i;
 var testSummaryLine = /\b(?:test suites?|tests?|passed|failures?|errors?|warnings?|duration|elapsed|exit code)\s*[:0-9]/i;
 var testCommand = /\b(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|build|lint|typecheck)|vitest|jest|pytest|go\s+test|cargo\s+test|dotnet\s+test|mvn\s+test|gradle|tsc)\b/i;
+var unsafeForRewrite = /[|<>&;`$\n]/;
+function isVerboseCommand(command) {
+  if (typeof command !== "string") return false;
+  if (command.length === 0 || command.length > 2e3) return false;
+  if (unsafeForRewrite.test(command)) return false;
+  if (command.includes("token-saver")) return false;
+  return testCommand.test(command);
+}
+function shellQuote(value) {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+function rewriteVerboseCommand(options) {
+  const tail = options.tailLines ?? 120;
+  const log = shellQuote(options.filePath);
+  return [
+    `__ts_log=${log}`,
+    `${options.command} > "$__ts_log" 2>&1`,
+    "__ts_code=$?",
+    `tail -n ${tail} "$__ts_log"`,
+    `printf '\\n[token-saver] full output: ${options.artifactId} (exit %s); use output_slice with startLine and maxLines\\n' "$__ts_code"`,
+    "exit $__ts_code"
+  ].join("; ");
+}
 function lineCount(text) {
   return text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
 }
@@ -19961,10 +20167,60 @@ async function compactOutput(options) {
   const compacted = compactText(options.input, options.kind, options.config);
   if (!compacted.compacted) return compacted;
   const store = options.store ?? new ArtifactStore(options.config);
-  const artifactId = await store.save(options.input, options.sessionId);
+  const sessionId = options.sessionId ?? "default";
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    const hash2 = outputHash(options.input);
+    const existing = await index.lookup(hash2);
+    if (existing) {
+      const preview = options.input.replace(ansiPattern, "").split(/\r\n|\r|\n/).slice(0, options.config.dedupPreviewLines).join("\n");
+      const stub = [
+        `[token-saver] duplicate: identical output was already stored (artifactId=${existing.artifactId}, ${existing.lines} lines).`,
+        preview,
+        "[\u2026 remaining lines are identical to the earlier result; use output_slice to retrieve any line range \u2026]"
+      ].join("\n");
+      await recordStats(store.root, {
+        type: "dedup",
+        session: sessionId,
+        kind: options.kind,
+        originalBytes: compacted.originalBytes,
+        returnedBytes: Buffer.byteLength(stub),
+        artifactId: existing.artifactId
+      });
+      return {
+        text: stub,
+        compacted: true,
+        deduped: true,
+        artifactId: existing.artifactId,
+        originalLines: compacted.originalLines,
+        originalBytes: compacted.originalBytes,
+        returnedLines: lineCount(stub),
+        returnedBytes: Buffer.byteLength(stub),
+        omittedLines: Math.max(0, compacted.originalLines - options.config.dedupPreviewLines)
+      };
+    }
+  }
+  const artifactId = await store.save(options.input, sessionId);
   const header = `[token-saver] ${options.kind}: ${compacted.originalLines} lines/${compacted.originalBytes} B \u2192 ${compacted.returnedLines} lines/${compacted.returnedBytes} B. Full output: ${artifactId}; use token-saver output_slice with startLine and maxLines.`;
   const text = `${header}
 ${compacted.text}`;
+  if (options.config.dedup) {
+    const index = new DedupIndex(store.root, sessionId, options.config.retentionHours);
+    await index.remember(outputHash(options.input), {
+      artifactId,
+      bytes: compacted.originalBytes,
+      lines: compacted.originalLines,
+      ts: Date.now()
+    });
+  }
+  await recordStats(store.root, {
+    type: "compact",
+    session: sessionId,
+    kind: options.kind,
+    originalBytes: compacted.originalBytes,
+    returnedBytes: Buffer.byteLength(text),
+    artifactId
+  });
   return {
     ...compacted,
     text,
@@ -19996,12 +20252,21 @@ var defaultConfig = {
   searchPerFile: 8,
   contextLines: 2,
   retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true
 };
 function integer2(value, fallback, min, max) {
   if (value === void 0) return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+function flag(value, fallback) {
+  if (value === void 0) return fallback;
+  if (value === "0" || value === "false") return false;
+  if (value === "1" || value === "true") return true;
+  return fallback;
 }
 function resolveConfig(overrides = {}) {
   const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
@@ -20015,7 +20280,10 @@ function resolveConfig(overrides = {}) {
     searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
     contextLines: overrides.contextLines ?? defaultConfig.contextLines,
     retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
-    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes
+    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
+    dedup: overrides.dedup ?? defaultConfig.dedup,
+    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
+    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands
   };
 }
 function configFromEnv(env = process.env) {
@@ -20028,7 +20296,15 @@ function configFromEnv(env = process.env) {
     headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
     tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
     searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
-    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720)
+    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
+    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
+    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
+    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
+    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
+    rewriteCommands: flag(
+      env.TOKEN_SAVER_REWRITE,
+      defaultConfig.rewriteCommands && process.platform !== "win32"
+    )
   });
 }
 
@@ -20057,7 +20333,49 @@ ${slice.text}`;
       }
     }
   };
+  const stats = {
+    description: "Show token-saver statistics: compactions, duplicates avoided, retrievals, and estimated token reduction for stored sessions.",
+    args: {},
+    execute: async () => {
+      try {
+        return formatStatsSummary(await summarizeStats(store.root));
+      } catch (error62) {
+        return `token-saver error: ${error62 instanceof Error ? error62.message : String(error62)}`;
+      }
+    }
+  };
   return {
+    "tool.execute.before": async (input2, output2) => {
+      try {
+        if (input2.tool !== "bash" || !config2.rewriteCommands) return;
+        const args = output2.args;
+        const command = typeof args?.command === "string" ? args.command : void 0;
+        if (!command || !isVerboseCommand(command)) return;
+        const sessionId = input2.sessionID || "opencode";
+        const reserved = await store.reserve(sessionId);
+        output2.args = {
+          ...args,
+          command: rewriteVerboseCommand({
+            command,
+            // POSIX shells choke on backslash paths; forward slashes work everywhere.
+            filePath: reserved.filePath.replaceAll("\\", "/"),
+            artifactId: reserved.artifactId,
+            tailLines: Math.max(20, config2.maxOutputLines - 2)
+          })
+        };
+        await recordStats(store.root, {
+          type: "rewrite",
+          session: sessionId,
+          kind: detectToolKind("bash", { command }),
+          commandBytes: Buffer.byteLength(command)
+        });
+      } catch (error62) {
+        if (process.env.TOKEN_SAVER_DEBUG === "1") {
+          process.stderr.write(`token-saver: ${error62 instanceof Error ? error62.message : String(error62)}
+`);
+        }
+      }
+    },
     "tool.execute.after": async (input2, output2) => {
       try {
         if (!compactableTools.has(input2.tool)) return;
@@ -20091,7 +20409,7 @@ ${slice.text}`;
     // @opencode-ai/plugin types custom-tool args against its own zod copy, which is
     // structurally incompatible with the workspace zod bundled here; opencode
     // validates against the runtime objects, so only that declaration is bypassed.
-    tool: { output_slice: outputSlice }
+    tool: { output_slice: outputSlice, stats }
   };
 };
 var plugin_default = TokenSaverPlugin;

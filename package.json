@@ -1,6 +1,6 @@
 {
   "name": "token-saver",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Reduce Claude Code, Codex, opencode, and Qoder token usage with deterministic, recoverable tool-output compaction.",
   "repository": {

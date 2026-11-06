@@ -10,7 +10,10 @@ var defaultConfig = {
   searchPerFile: 8,
   contextLines: 2,
   retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true
 };
 
 // packages/core/src/pre-compact.ts

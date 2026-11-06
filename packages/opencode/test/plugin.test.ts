@@ -14,6 +14,8 @@ async function pluginFor(t: test.TestContext) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "token-saver-opencode-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   process.env.TOKEN_SAVER_DATA_DIR = root;
+  process.env.TOKEN_SAVER_REWRITE = "1";
+  t.after(() => delete process.env.TOKEN_SAVER_REWRITE);
   const hooks = await TokenSaverPlugin({} as PluginInput);
   return hooks;
 }
@@ -105,4 +107,48 @@ test("session compacting hook appends preservation instructions", async (t) => {
   const output = { context: [] as string[] };
   await hooks["experimental.session.compacting"]!({ sessionID: "opencode-test" }, output);
   assert.ok(output.context.includes(preCompactInstructions));
+});
+
+test("before hook rewrites whitelisted verbose commands into artifact-redirecting ones", async (t) => {
+  const hooks = await pluginFor(t);
+  const before = hooks["tool.execute.before"]!;
+  const output = { args: { command: "npm test" } };
+  await before({ tool: "bash", sessionID: "rewrite-test", callID: "b1" }, output);
+  const rewritten = output.args.command as string;
+  assert.match(rewritten, /npm test > "\$__ts_log" 2>&1/);
+  assert.match(rewritten, /tail -n \d+/);
+  assert.match(rewritten, /\[token-saver\] full output: rewrite-test\.[0-9a-f-]{36}/);
+  assert.match(rewritten, /exit \$__ts_code/);
+});
+
+test("before hook leaves non-verbose or shell-composite commands untouched", async (t) => {
+  const hooks = await pluginFor(t);
+  const before = hooks["tool.execute.before"]!;
+  const piped = { args: { command: "npm test | head -50" } };
+  await before({ tool: "bash", sessionID: "s", callID: "b2" }, piped);
+  assert.equal(piped.args.command, "npm test | head -50");
+
+  const quiet = { args: { command: "pwd" } };
+  await before({ tool: "bash", sessionID: "s", callID: "b3" }, quiet);
+  assert.equal(quiet.args.command, "pwd");
+
+  const other = { args: { pattern: "**/*" } };
+  await before({ tool: "glob", sessionID: "s", callID: "b4" }, other);
+  assert.equal(other.args.pattern, "**/*");
+});
+
+test("stats tool summarizes recorded activity", async (t) => {
+  const hooks = await pluginFor(t);
+  const output: HookOutput = {
+    title: "npm test",
+    output: Array.from({ length: 300 }, (_, index) => `log ${index}`).join("\n"),
+    metadata: {},
+  };
+  await hooks["tool.execute.after"]!(
+    { tool: "bash", sessionID: "stats-test", callID: "c7", args: { command: "npm test" } },
+    output,
+  );
+  const summary = await (hooks.tool!.stats.execute as () => Promise<string>)();
+  assert.match(summary, /compactions: 1/);
+  assert.match(summary, /read:\s|test:\s|shell:\s/);
 });

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { recordStats } from "./stats.js";
 import type { ArtifactSlice, CompactionConfig } from "./types.js";
 
 const artifactPattern = /^([a-zA-Z0-9_-]{1,64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
@@ -9,6 +10,10 @@ const artifactPattern = /^([a-zA-Z0-9_-]{1,64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a
 function sessionKey(sessionId: string): string {
   if (/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) return sessionId;
   return createHash("sha256").update(sessionId).digest("hex").slice(0, 32);
+}
+
+export function sessionDirectory(root: string, sessionId: string): string {
+  return path.join(root, sessionKey(sessionId));
 }
 
 function lines(text: string): string[] {
@@ -35,6 +40,14 @@ export class ArtifactStore {
     return `${session}.${id}`;
   }
 
+  async reserve(sessionId = "default"): Promise<{ artifactId: string; filePath: string }> {
+    const session = sessionKey(sessionId);
+    const id = randomUUID();
+    const directory = path.join(this.root, session);
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    return { artifactId: `${session}.${id}`, filePath: path.join(directory, `${id}.log`) };
+  }
+
   async readSlice(artifactId: string, startLine = 1, maxLines = 200): Promise<ArtifactSlice> {
     const match = artifactPattern.exec(artifactId);
     if (!match) throw new Error("Invalid token-saver artifact ID");
@@ -49,6 +62,7 @@ export class ArtifactStore {
     const start = Math.min(startLine - 1, allLines.length);
     const selected = allLines.slice(start, start + maxLines);
     const endLine = selected.length === 0 ? start : start + selected.length;
+    await recordStats(this.root, { type: "retrieve", session: match[1], artifactId, startLine, maxLines });
     return {
       artifactId,
       startLine: start + 1,

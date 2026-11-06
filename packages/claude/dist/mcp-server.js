@@ -3257,8 +3257,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path3) {
-      let input2 = path3;
+    function removeDotSegments(path5) {
+      let input2 = path5;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -3332,11 +3332,11 @@ var require_utils = __commonJS({
       }
       return output2.join("");
     }
-    function removeDotSegmentsRelative(path3) {
-      if (path3 === "" || path3[0] === "/") {
-        return removeDotSegments(path3);
+    function removeDotSegmentsRelative(path5) {
+      if (path5 === "" || path5[0] === "/") {
+        return removeDotSegments(path5);
       }
-      const segments = path3.split("/");
+      const segments = path5.split("/");
       const last = segments.length - 1;
       const output2 = [];
       let trailingDirectory = false;
@@ -3699,8 +3699,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path3 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
+        const path5 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7237,12 +7237,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs3, exportName) {
+    function addFormats(ajv, list, fs5, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs3[f]);
+        ajv.addFormat(f, fs5[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7624,8 +7624,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path5, errorMaps, issueData } = params;
+  const fullPath = [...path5, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7740,11 +7740,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path5, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path5;
     this._key = key;
   }
   get path() {
@@ -11699,10 +11699,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path5) {
+  if (!path5)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path5.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -12042,11 +12042,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path3, issues) {
+function prefixIssues(path5, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path5);
     return iss;
   });
 }
@@ -12508,16 +12508,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path5 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path5, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -12556,17 +12556,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path5 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path5, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -12605,8 +12605,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path3) {
+  const path5 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path5) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -28157,11 +28157,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path3) {
-  if (path3.length === 0) {
+function getDotPath(path5) {
+  if (path5.length === 0) {
     return "object root";
   }
-  return path3.reduce((acc, seg, index) => {
+  return path5.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -30388,13 +30388,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path3 = ref.slice(1).split("/").filter(Boolean);
-  if (path3.length === 0) {
+  const path5 = ref.slice(1).split("/").filter(Boolean);
+  if (path5.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path3[0] === defsKey) {
-    const key = path3[1] === void 0 ? void 0 : decodeJSONPointerSegment(path3[1]);
+  if (path5[0] === defsKey) {
+    const key = path5[1] === void 0 ? void 0 : decodeJSONPointerSegment(path5[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -36651,13 +36651,139 @@ var StdioServerTransport = class {
 
 // packages/core/src/artifact-store.ts
 import { createHash, randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
+import { promises as fs2 } from "node:fs";
 import os from "node:os";
+import path2 from "node:path";
+
+// packages/core/src/stats.ts
+import { promises as fs } from "node:fs";
 import path from "node:path";
+var statsFileName = "stats.jsonl";
+function statsFilePath(root) {
+  return path.join(root, statsFileName);
+}
+function statsEnabled() {
+  return process.env.TOKEN_SAVER_STATS !== "0";
+}
+async function recordStats(root, event) {
+  if (!statsEnabled()) return;
+  try {
+    const recorded = { ...event, ts: Date.now() };
+    await fs.appendFile(statsFilePath(root), `${JSON.stringify(recorded)}
+`, { encoding: "utf8" });
+  } catch {
+  }
+}
+function emptyKindStats() {
+  return {
+    compactedCount: 0,
+    dedupedCount: 0,
+    originalBytes: 0,
+    returnedBytes: 0,
+    dedupedOriginalBytes: 0,
+    dedupedReturnedBytes: 0,
+    rewrites: 0
+  };
+}
+function asNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+async function summarizeStats(root) {
+  const summary = {
+    sessions: 0,
+    compactions: 0,
+    dedupHits: 0,
+    retrievals: 0,
+    rewrites: 0,
+    originalBytes: 0,
+    returnedBytes: 0,
+    dedupedOriginalBytes: 0,
+    dedupedReturnedBytes: 0,
+    estimatedTokensSaved: 0,
+    estimatedReductionPercent: 0,
+    perKind: {}
+  };
+  let raw;
+  try {
+    raw = await fs.readFile(statsFilePath(root), "utf8");
+  } catch {
+    return summary;
+  }
+  const sessions = /* @__PURE__ */ new Set();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!event || typeof event.type !== "string") continue;
+    sessions.add(String(event.session));
+    if (event.type === "compact" || event.type === "dedup") {
+      const kindStats = summary.perKind[String(event.kind)] ?? emptyKindStats();
+      const originalBytes = asNumber(event.originalBytes);
+      const returnedBytes = asNumber(event.returnedBytes);
+      if (event.type === "compact") {
+        summary.compactions += 1;
+        summary.originalBytes += originalBytes;
+        summary.returnedBytes += returnedBytes;
+        kindStats.compactedCount += 1;
+        kindStats.originalBytes += originalBytes;
+        kindStats.returnedBytes += returnedBytes;
+      } else {
+        summary.dedupHits += 1;
+        summary.dedupedOriginalBytes += originalBytes;
+        summary.dedupedReturnedBytes += returnedBytes;
+        kindStats.dedupedCount += 1;
+        kindStats.dedupedOriginalBytes += originalBytes;
+        kindStats.dedupedReturnedBytes += returnedBytes;
+      }
+      summary.perKind[String(event.kind)] = kindStats;
+    } else if (event.type === "retrieve") {
+      summary.retrievals += 1;
+    } else if (event.type === "rewrite") {
+      summary.rewrites += 1;
+      const kindStats = summary.perKind[String(event.kind) ?? "shell"] ?? emptyKindStats();
+      kindStats.rewrites += 1;
+      summary.perKind[String(event.kind) ?? "shell"] = kindStats;
+    }
+  }
+  summary.sessions = sessions.size;
+  const originalTotal = summary.originalBytes + summary.dedupedOriginalBytes;
+  const returnedTotal = summary.returnedBytes + summary.dedupedReturnedBytes;
+  summary.estimatedTokensSaved = Math.round((originalTotal - returnedTotal) / 4);
+  summary.estimatedReductionPercent = originalTotal > 0 ? Math.round((originalTotal - returnedTotal) / originalTotal * 1e3) / 10 : 0;
+  return summary;
+}
+function formatStatsSummary(summary) {
+  const lines2 = [
+    "[token-saver] session statistics (bytes/4 token estimates, not billed tokens)",
+    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | sessions: ${summary.sessions}`,
+    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)`
+  ];
+  const kinds = Object.entries(summary.perKind);
+  if (kinds.length > 0) {
+    lines2.push(
+      "per kind: " + kinds.map(([kind, stats]) => {
+        const parts = [`${stats.compactedCount} compacted`];
+        if (stats.dedupedCount > 0) parts.push(`${stats.dedupedCount} deduped`);
+        if (stats.rewrites > 0) parts.push(`${stats.rewrites} rewritten`);
+        return `${kind}: ${parts.join(", ")}`;
+      }).join("; ")
+    );
+  }
+  return lines2.join("\n");
+}
+
+// packages/core/src/artifact-store.ts
 var artifactPattern = /^([a-zA-Z0-9_-]{1,64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 function sessionKey(sessionId) {
   if (/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) return sessionId;
   return createHash("sha256").update(sessionId).digest("hex").slice(0, 32);
+}
+function sessionDirectory(root, sessionId) {
+  return path2.join(root, sessionKey(sessionId));
 }
 function lines(text2) {
   return text2.length === 0 ? [] : text2.split(/\r\n|\r|\n/);
@@ -36667,17 +36793,24 @@ var ArtifactStore = class {
   retentionHours;
   lastCleanup = 0;
   constructor(config3, root) {
-    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path.join(os.homedir(), ".token-saver", "outputs");
+    this.root = root ?? process.env.TOKEN_SAVER_DATA_DIR ?? path2.join(os.homedir(), ".token-saver", "outputs");
     this.retentionHours = config3.retentionHours;
   }
   async save(output2, sessionId = "default") {
     const session = sessionKey(sessionId);
     const id = randomUUID();
-    const directory = path.join(this.root, session);
-    await fs.mkdir(directory, { recursive: true, mode: 448 });
-    await fs.writeFile(path.join(directory, `${id}.log`), output2, { encoding: "utf8", mode: 384, flag: "wx" });
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    await fs2.writeFile(path2.join(directory, `${id}.log`), output2, { encoding: "utf8", mode: 384, flag: "wx" });
     await this.cleanupExpired();
     return `${session}.${id}`;
+  }
+  async reserve(sessionId = "default") {
+    const session = sessionKey(sessionId);
+    const id = randomUUID();
+    const directory = path2.join(this.root, session);
+    await fs2.mkdir(directory, { recursive: true, mode: 448 });
+    return { artifactId: `${session}.${id}`, filePath: path2.join(directory, `${id}.log`) };
   }
   async readSlice(artifactId, startLine = 1, maxLines = 200) {
     const match = artifactPattern.exec(artifactId);
@@ -36686,12 +36819,13 @@ var ArtifactStore = class {
     if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > 1e3) {
       throw new Error("maxLines must be between 1 and 1000");
     }
-    const filePath = path.join(this.root, match[1], `${match[2]}.log`);
-    const output2 = await fs.readFile(filePath, "utf8");
+    const filePath = path2.join(this.root, match[1], `${match[2]}.log`);
+    const output2 = await fs2.readFile(filePath, "utf8");
     const allLines = lines(output2);
     const start = Math.min(startLine - 1, allLines.length);
     const selected = allLines.slice(start, start + maxLines);
     const endLine = selected.length === 0 ? start : start + selected.length;
+    await recordStats(this.root, { type: "retrieve", session: match[1], artifactId, startLine, maxLines });
     return {
       artifactId,
       startLine: start + 1,
@@ -36707,24 +36841,73 @@ var ArtifactStore = class {
     const cutoff = now - this.retentionHours * 60 * 60 * 1e3;
     let sessions;
     try {
-      sessions = await fs.readdir(this.root, { withFileTypes: true });
+      sessions = await fs2.readdir(this.root, { withFileTypes: true });
     } catch (error62) {
       if (error62.code === "ENOENT") return;
       throw error62;
     }
     for (const session of sessions) {
       if (!session.isDirectory() || !/^[a-zA-Z0-9_-]{1,64}$/.test(session.name)) continue;
-      const directory = path.join(this.root, session.name);
-      const files = await fs.readdir(directory, { withFileTypes: true });
+      const directory = path2.join(this.root, session.name);
+      const files = await fs2.readdir(directory, { withFileTypes: true });
       for (const file2 of files) {
         if (!file2.isFile() || !/^[0-9a-f-]{36}\.log$/.test(file2.name)) continue;
-        const filePath = path.join(directory, file2.name);
-        const stat = await fs.stat(filePath);
-        if (stat.mtimeMs < cutoff) await fs.rm(filePath);
+        const filePath = path2.join(directory, file2.name);
+        const stat = await fs2.stat(filePath);
+        if (stat.mtimeMs < cutoff) await fs2.rm(filePath);
       }
-      const remaining = await fs.readdir(directory);
-      if (remaining.length === 0) await fs.rmdir(directory);
+      const remaining = await fs2.readdir(directory);
+      if (remaining.length === 0) await fs2.rmdir(directory);
     }
+  }
+};
+
+// packages/core/src/dedup.ts
+import { createHash as createHash2 } from "node:crypto";
+import { promises as fs3 } from "node:fs";
+import path3 from "node:path";
+var indexFileName = "dedup.json";
+function outputHash(input2) {
+  return createHash2("sha256").update(input2).digest("hex").slice(0, 32);
+}
+var DedupIndex = class {
+  filePath;
+  retentionHours;
+  entries;
+  constructor(root, sessionId, retentionHours) {
+    this.filePath = path3.join(sessionDirectory(root, sessionId), indexFileName);
+    this.retentionHours = retentionHours;
+  }
+  async lookup(hash2) {
+    const entries = await this.load();
+    const entry = entries[hash2];
+    if (!entry) return void 0;
+    if (Date.now() - entry.ts > this.retentionHours * 60 * 60 * 1e3) return void 0;
+    return entry;
+  }
+  async remember(hash2, entry) {
+    const entries = await this.load();
+    const cutoff = Date.now() - this.retentionHours * 60 * 60 * 1e3;
+    for (const key of Object.keys(entries)) {
+      if (entries[key].ts < cutoff) delete entries[key];
+    }
+    entries[hash2] = entry;
+    try {
+      await fs3.writeFile(`${this.filePath}.tmp`, JSON.stringify(entries), { encoding: "utf8", mode: 384 });
+      await fs3.rename(`${this.filePath}.tmp`, this.filePath);
+    } catch {
+    }
+  }
+  async load() {
+    if (this.entries) return this.entries;
+    try {
+      const raw = await fs3.readFile(this.filePath, "utf8");
+      const parsed = JSON.parse(raw);
+      this.entries = parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      this.entries = {};
+    }
+    return this.entries;
   }
 };
 
@@ -36889,10 +37072,60 @@ async function compactOutput(options) {
   const compacted = compactText(options.input, options.kind, options.config);
   if (!compacted.compacted) return compacted;
   const store2 = options.store ?? new ArtifactStore(options.config);
-  const artifactId = await store2.save(options.input, options.sessionId);
+  const sessionId = options.sessionId ?? "default";
+  if (options.config.dedup) {
+    const index = new DedupIndex(store2.root, sessionId, options.config.retentionHours);
+    const hash2 = outputHash(options.input);
+    const existing = await index.lookup(hash2);
+    if (existing) {
+      const preview = options.input.replace(ansiPattern, "").split(/\r\n|\r|\n/).slice(0, options.config.dedupPreviewLines).join("\n");
+      const stub = [
+        `[token-saver] duplicate: identical output was already stored (artifactId=${existing.artifactId}, ${existing.lines} lines).`,
+        preview,
+        "[\u2026 remaining lines are identical to the earlier result; use output_slice to retrieve any line range \u2026]"
+      ].join("\n");
+      await recordStats(store2.root, {
+        type: "dedup",
+        session: sessionId,
+        kind: options.kind,
+        originalBytes: compacted.originalBytes,
+        returnedBytes: Buffer.byteLength(stub),
+        artifactId: existing.artifactId
+      });
+      return {
+        text: stub,
+        compacted: true,
+        deduped: true,
+        artifactId: existing.artifactId,
+        originalLines: compacted.originalLines,
+        originalBytes: compacted.originalBytes,
+        returnedLines: lineCount(stub),
+        returnedBytes: Buffer.byteLength(stub),
+        omittedLines: Math.max(0, compacted.originalLines - options.config.dedupPreviewLines)
+      };
+    }
+  }
+  const artifactId = await store2.save(options.input, sessionId);
   const header = `[token-saver] ${options.kind}: ${compacted.originalLines} lines/${compacted.originalBytes} B \u2192 ${compacted.returnedLines} lines/${compacted.returnedBytes} B. Full output: ${artifactId}; use token-saver output_slice with startLine and maxLines.`;
   const text2 = `${header}
 ${compacted.text}`;
+  if (options.config.dedup) {
+    const index = new DedupIndex(store2.root, sessionId, options.config.retentionHours);
+    await index.remember(outputHash(options.input), {
+      artifactId,
+      bytes: compacted.originalBytes,
+      lines: compacted.originalLines,
+      ts: Date.now()
+    });
+  }
+  await recordStats(store2.root, {
+    type: "compact",
+    session: sessionId,
+    kind: options.kind,
+    originalBytes: compacted.originalBytes,
+    returnedBytes: Buffer.byteLength(text2),
+    artifactId
+  });
   return {
     ...compacted,
     text: text2,
@@ -36924,12 +37157,21 @@ var defaultConfig = {
   searchPerFile: 8,
   contextLines: 2,
   retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true
 };
 function integer2(value, fallback, min, max) {
   if (value === void 0) return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+function flag(value, fallback) {
+  if (value === void 0) return fallback;
+  if (value === "0" || value === "false") return false;
+  if (value === "1" || value === "true") return true;
+  return fallback;
 }
 function resolveConfig(overrides = {}) {
   const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
@@ -36943,7 +37185,10 @@ function resolveConfig(overrides = {}) {
     searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
     contextLines: overrides.contextLines ?? defaultConfig.contextLines,
     retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
-    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes
+    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
+    dedup: overrides.dedup ?? defaultConfig.dedup,
+    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
+    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands
   };
 }
 function configFromEnv(env = process.env) {
@@ -36956,20 +37201,28 @@ function configFromEnv(env = process.env) {
     headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
     tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
     searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
-    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720)
+    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
+    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
+    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
+    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
+    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
+    rewriteCommands: flag(
+      env.TOKEN_SAVER_REWRITE,
+      defaultConfig.rewriteCommands && process.platform !== "win32"
+    )
   });
 }
 
 // packages/mcp-server/src/tools.ts
 import { exec, execFile } from "node:child_process";
-import { promises as fs2 } from "node:fs";
-import path2 from "node:path";
+import { promises as fs4 } from "node:fs";
+import path4 from "node:path";
 import { promisify } from "node:util";
 var execAsync = promisify(exec);
 var execFileAsync = promisify(execFile);
 function projectPath(input2, cwd = process.cwd()) {
-  const resolved = path2.resolve(cwd, input2);
-  if (resolved !== cwd && !resolved.startsWith(`${cwd}${path2.sep}`)) {
+  const resolved = path4.resolve(cwd, input2);
+  if (resolved !== cwd && !resolved.startsWith(`${cwd}${path4.sep}`)) {
     throw new Error("Paths must remain inside the current project");
   }
   return resolved;
@@ -36985,12 +37238,12 @@ async function compact(text2, kind, config3, store2) {
 }
 async function compactRead(options) {
   const filePath = projectPath(options.filePath);
-  const stat = await fs2.stat(filePath);
+  const stat = await fs4.stat(filePath);
   if (!stat.isFile()) throw new Error("compact_read requires a file");
   if (stat.size > options.config.maxFileBytes) {
     throw new Error(`File exceeds the ${options.config.maxFileBytes}-byte limit; request a line range`);
   }
-  const content = await fs2.readFile(filePath, "utf8");
+  const content = await fs4.readFile(filePath, "utf8");
   if (content.includes("\0")) throw new Error("Binary files are not supported");
   if (options.startLine !== void 0) {
     const allLines = content.split(/\r\n|\r|\n/);
@@ -37067,11 +37320,14 @@ async function outputSlice(options) {
   return `[${slice.artifactId}: lines ${slice.startLine}\u2013${slice.endLine} of ${slice.totalLines}]
 ${slice.text}`;
 }
+async function statsSummary(options) {
+  return formatStatsSummary(await summarizeStats(options.store.root));
+}
 
 // packages/mcp-server/src/server.ts
 var config2 = configFromEnv();
 var store = new ArtifactStore(config2);
-var server = new McpServer({ name: "token-saver", version: "0.1.0" });
+var server = new McpServer({ name: "token-saver", version: "0.3.0" });
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
@@ -37152,6 +37408,21 @@ server.registerTool(
   async ({ artifactId, startLine, maxLines }) => {
     try {
       return text(await outputSlice({ artifactId, startLine, maxLines, store }));
+    } catch (error62) {
+      return failure2(error62);
+    }
+  }
+);
+server.registerTool(
+  "stats",
+  {
+    title: "Token-saver statistics",
+    description: "Show token-saver statistics: compactions, duplicates avoided, retrievals, and estimated token reduction across stored sessions.",
+    inputSchema: {}
+  },
+  async () => {
+    try {
+      return text(await statsSummary({ store }));
     } catch (error62) {
       return failure2(error62);
     }

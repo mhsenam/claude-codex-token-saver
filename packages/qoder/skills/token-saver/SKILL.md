@@ -5,7 +5,7 @@ description: Recover full tool output compacted by token-saver and prefer its co
 
 # Token Saver
 
-When a result contains `[token-saver]`, use the compacted content first. Its header names the stored artifact ID; call the token-saver `output_slice` tool with that `artifactId` and a small `startLine`/`maxLines` range only when omitted details are needed. Do not rerun a verbose command solely to recover output that is already stored in an artifact. Preserve artifact IDs and exit codes in subsequent reasoning.
+When a result contains `[token-saver]`, use the compacted content first. Its header names the stored artifact ID; call the token-saver `output_slice` tool with that `artifactId` and a small `startLine`/`maxLines` range only when omitted details are needed. Do not rerun a verbose command solely to recover output that is already stored in an artifact. A result marked `[token-saver] duplicate:` is an exact repeat of an earlier output; trust its preview and the referenced artifact instead of requesting the content again. Preserve artifact IDs and exit codes in subsequent reasoning. The `stats` tool reports accumulated savings when asked about token usage.
 
 For operations expected to produce more than about 100 lines, prefer the token-saver MCP tools (`mcp__token-saver__*`):
 

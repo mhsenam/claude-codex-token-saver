@@ -11,6 +11,9 @@ export interface CompactionConfig {
   contextLines: number;
   retentionHours: number;
   maxFileBytes: number;
+  dedup: boolean;
+  dedupPreviewLines: number;
+  rewriteCommands: boolean;
 }
 
 export interface TextCompaction {
@@ -25,6 +28,7 @@ export interface TextCompaction {
 
 export interface CompactionResult extends TextCompaction {
   artifactId?: string;
+  deduped?: boolean;
 }
 
 export interface ArtifactSlice {

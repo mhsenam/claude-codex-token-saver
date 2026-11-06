@@ -13,4 +13,6 @@ For operations expected to produce more than about 100 lines, prefer the `token-
 
 Use built-in tools for small outputs, exact edits, and precise file ranges. An explicit `startLine` in `compact_read` returns an exact uncompacted range.
 
-When output contains a token-saver artifact ID, use `output_slice` with a small `startLine`/`maxLines` range to inspect omitted content. Do not rerun verbose commands solely to recover stored output. Preserve artifact IDs and exit codes in subsequent reasoning.
+When output contains a token-saver artifact ID, use `output_slice` with a small `startLine`/`maxLines` range to inspect omitted content. Do not rerun verbose commands solely to recover stored output. A result marked `[token-saver] duplicate:` is an exact repeat of an earlier output; trust its preview and the referenced artifact instead of requesting the content again. Preserve artifact IDs and exit codes in subsequent reasoning.
+
+To report how much context token-saver has saved, call the `stats` tool.
