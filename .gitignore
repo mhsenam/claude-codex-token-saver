@@ -1,0 +1,8 @@
+node_modules/
+dist/
+!packages/*/dist/
+!packages/*/dist/*.js
+release/
+coverage/
+*.log
+.DS_Store

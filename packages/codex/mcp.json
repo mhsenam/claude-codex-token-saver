@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "token-saver": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${PLUGIN_ROOT}/dist/mcp-server.js"]
+    }
+  }
+}

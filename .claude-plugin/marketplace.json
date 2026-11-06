@@ -1,0 +1,17 @@
+{
+  "name": "token-saver",
+  "owner": {
+    "name": "mhsenam"
+  },
+  "metadata": {
+    "description": "Deterministic, recoverable context optimization for Claude Code and Codex."
+  },
+  "plugins": [
+    {
+      "name": "token-saver",
+      "source": "./packages/claude",
+      "description": "Reduce Claude Code token usage with recoverable compaction for verbose tool output.",
+      "category": "development"
+    }
+  ]
+}

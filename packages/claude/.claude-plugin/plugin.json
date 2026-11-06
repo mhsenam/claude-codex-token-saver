@@ -1,0 +1,11 @@
+{
+  "name": "token-saver",
+  "version": "0.1.0",
+  "description": "Deterministic, recoverable compaction for verbose coding-tool output.",
+  "author": {
+    "name": "mhsenam"
+  },
+  "homepage": "https://github.com/mhsenam/claude-codex-token-saver",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}
