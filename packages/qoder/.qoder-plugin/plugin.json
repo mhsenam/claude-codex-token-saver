@@ -1,0 +1,18 @@
+{
+  "name": "token-saver",
+  "version": "0.2.0",
+  "displayName": "TokenSaver",
+  "description": "Deterministic, recoverable compaction for verbose coding-tool output. Full output is stored locally; the model sees a compact preview; output_slice retrieves any omitted line range.",
+  "author": {
+    "name": "mhsenam"
+  },
+  "repository": "https://github.com/mhsenam/claude-codex-token-saver",
+  "homepage": "https://github.com/mhsenam/claude-codex-token-saver#readme",
+  "license": "MIT",
+  "keywords": [
+    "token-saver",
+    "context-optimization",
+    "mcp",
+    "hooks"
+  ]
+}

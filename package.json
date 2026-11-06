@@ -1,8 +1,8 @@
 {
   "name": "token-saver",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Reduce Claude Code and Codex token usage with deterministic, recoverable tool-output compaction.",
+  "description": "Reduce Claude Code, Codex, opencode, and Qoder token usage with deterministic, recoverable tool-output compaction.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mhsenam/claude-codex-token-saver.git"
@@ -11,6 +11,8 @@
   "keywords": [
     "claude-code",
     "codex",
+    "opencode",
+    "qoder",
     "token-optimization",
     "context-optimization",
     "mcp"
@@ -25,7 +27,7 @@
   "scripts": {
     "build": "npm run typecheck && node scripts/build.mjs",
     "typecheck": "tsc",
-    "test": "tsx --test packages/core/test/*.test.ts packages/mcp-server/test/*.test.ts packages/claude/test/*.test.ts packages/codex/test/*.test.ts",
+    "test": "tsx --test packages/core/test/*.test.ts packages/mcp-server/test/*.test.ts packages/claude/test/*.test.ts packages/codex/test/*.test.ts packages/opencode/test/*.test.ts packages/qoder/test/*.test.ts",
     "benchmark": "tsx benchmarks/token-savings.ts",
     "smoke": "node scripts/smoke.mjs",
     "package": "npm run build && node scripts/package.mjs"
@@ -35,6 +37,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.19.5",
     "@types/node": "^24.10.1",
     "esbuild": "^0.27.4",
     "tsx": "^4.21.0",

@@ -6,3 +6,4 @@ release/
 coverage/
 *.log
 .DS_Store
+.zcode/

@@ -309,7 +309,7 @@ function configFromEnv(env = process.env) {
   });
 }
 
-// packages/claude/src/handler.ts
+// packages/core/src/hook-handler.ts
 function textParts(value) {
   if (typeof value === "string") return value;
   if (!Array.isArray(value)) return void 0;
@@ -348,7 +348,7 @@ function metadataSuffix(response) {
   return suffix.length > 0 ? `
 [${suffix.join("; ")}]` : "";
 }
-async function handlePostToolUse(payload, config = configFromEnv(), store) {
+async function handlePostToolUse(payload, config = configFromEnv(), store, defaultSession = "claude") {
   if (!payload.tool_name) return void 0;
   const kind = detectToolKind(payload.tool_name, payload.tool_input);
   if (kind === "read" && typeof payload.tool_input === "object" && payload.tool_input !== null && ("offset" in payload.tool_input || "limit" in payload.tool_input)) {
@@ -357,7 +357,7 @@ async function handlePostToolUse(payload, config = configFromEnv(), store) {
   const result2 = await compactOutput({
     input: extractToolOutput(payload.tool_response),
     kind,
-    sessionId: payload.session_id ?? "claude",
+    sessionId: payload.session_id ?? defaultSession,
     config,
     store
   });

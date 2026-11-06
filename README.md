@@ -1,12 +1,14 @@
 # TokenSaver
 
-### Reduce Claude Code and Codex token usage without losing tool output
+### Reduce Claude Code, Codex, opencode, and Qoder token usage without losing tool output
 
-TokenSaver is a local-first context optimization plugin for **Claude Code** and **OpenAI Codex**. It compacts verbose command logs, test failures, repository searches, and large file reads before they consume your model context. The complete output remains available locally whenever you need it.
+TokenSaver is a local-first context optimization plugin for **Claude Code**, **OpenAI Codex**, **opencode**, and **Qoder**. It compacts verbose command logs, test failures, repository searches, and large file reads before they consume your model context. The complete output remains available locally whenever you need it.
 
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-6b4fbb)](https://code.claude.com/docs/en/plugins/overview)
 [![Codex plugin](https://img.shields.io/badge/OpenAI%20Codex-plugin-111111)](https://developers.openai.com/plugins/build/plugins)
+[![opencode plugin](https://img.shields.io/badge/opencode-plugin-1f6feb)](https://opencode.ai/docs/plugins)
+[![Qoder plugin](https://img.shields.io/badge/Qoder-plugin-00a0e9)](https://docs.qoder.com/extensions/plugins)
 
 ## Why TokenSaver?
 
@@ -22,15 +24,15 @@ TokenSaver uses **deterministic local compaction**, not another AI summarization
 
 ## Features
 
-| Capability | Claude Code | Codex |
-| --- | --- | --- |
-| Compact verbose shell and test output | Automatic `PostToolUse` hook | `compact_run` MCP tool |
-| Compact broad repository searches | Automatic `Grep` hook | `compact_search` MCP tool |
-| Compact large file reads | Automatic `Read` hook | `compact_read` MCP tool |
-| Preserve explicitly requested file ranges | Yes | Yes |
-| Retrieve omitted output | `output_slice` | `output_slice` |
-| Improve automatic context compaction | `PreCompact` guidance | `PreCompact` guidance |
-| Store full output locally | Yes | Yes |
+| Capability | Claude Code | Codex | opencode | Qoder |
+| --- | --- | --- | --- | --- |
+| Compact verbose shell and test output | Automatic `PostToolUse` hook | `compact_run` MCP tool | Automatic `bash` hook | Automatic `PostToolUse` hook |
+| Compact broad repository searches | Automatic `Grep` hook | `compact_search` MCP tool | Automatic `grep` hook | Automatic `Grep` hook |
+| Compact large file reads | Automatic `Read` hook | `compact_read` MCP tool | Automatic `read` hook | Automatic `Read` hook |
+| Preserve explicitly requested file ranges | Yes | Yes | Yes | Yes |
+| Retrieve omitted output | `output_slice` | `output_slice` | `output_slice` plugin tool | `output_slice` MCP tool |
+| Improve automatic context compaction | `PreCompact` guidance | `PreCompact` guidance | `experimental.session.compacting` guidance | `PreCompact` guidance |
+| Store full output locally | Yes | Yes | Yes | Yes |
 
 Additional behavior:
 
@@ -47,7 +49,7 @@ Additional behavior:
 ### Prerequisites
 
 - **Node.js 22 or newer**
-- Claude Code, Codex CLI, or a Codex host with plugin support
+- Claude Code, Codex CLI, opencode, or Qoder
 - Optional: [ripgrep](https://github.com/BurntSushi/ripgrep) for `compact_search`
 
 ### Install for Claude Code
@@ -78,6 +80,32 @@ Read this large file with compact_read, then retrieve any missing lines you need
 ```
 
 The bundled skill also teaches Codex when to select these tools.
+
+### Install for opencode
+
+Once `opencode-token-saver` is published to npm, add it to the `plugin` array in `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-token-saver"]
+}
+```
+
+opencode installs npm plugins automatically at startup. A no-install alternative is to copy `packages/opencode/dist/plugin.js` into `.opencode/plugins/token-saver.js` (project) or `~/.config/opencode/plugins/token-saver.js` (global).
+
+Restart opencode. TokenSaver automatically compacts large `bash`, `read`, and `grep` results and registers an `output_slice` tool for retrieval.
+
+### Install for Qoder
+
+Import the packaged plugin folder `release/qoder/token-saver` (created by `npm run package`) from Qoder IDE via Settings > Plugins > import from a local folder, or install it from a local directory with the Qoder CLI, then restart Qoder:
+
+```bash
+qoder plugins install <path-to-release/qoder/token-saver>
+qoder plugins validate <path-to-release/qoder/token-saver>
+```
+
+The plugin bundles the automatic `PostToolUse` compaction hook, the `PreCompact` guidance hook, and the token-saver MCP server (`compact_read`, `compact_search`, `compact_run`, `output_slice`). If your Qoder version does not resolve bundled MCP or hook paths, follow the manual fallback in `packages/qoder/install/README.md`, which also documents an optional Always Apply rule for biasing the agent toward the compact tools.
 
 ## Example
 
@@ -161,7 +189,7 @@ Compact model-visible result           |
                output_slice retrieval
 ```
 
-Compaction policies are shared across hosts. Claude adds native hook adapters; Codex registers the same functionality through MCP tools and a skill.
+Compaction policies are shared across hosts. Claude Code, Qoder, and opencode compact automatically through host hooks; Claude and Qoder additionally bundle the MCP server for retrieval and explicit compact operations, opencode registers `output_slice` as a plugin tool, and Codex registers everything through MCP tools and a skill.
 
 ## Privacy and security
 
@@ -169,7 +197,7 @@ Compaction policies are shared across hosts. Claude adds native hook adapters; C
 - Full tool output is written locally with restrictive file permissions where supported.
 - Artifacts may contain the same sensitive information as the original logs. Use a suitable retention period and avoid printing secrets in commands.
 - `compact_run` executes the shell command requested by the agent. Only install and enable plugins you trust, and review commands as you would with a built-in shell tool.
-- File and search path inputs are restricted to the current project; a shell command itself has the permissions of the user running Codex.
+- File and search path inputs are restricted to the current project; a shell command itself has the permissions of the user running the coding agent.
 - Hook failures return the original output instead of blocking the coding session.
 
 ## Local development
@@ -191,7 +219,7 @@ Useful commands:
 | `npm run typecheck` | Type-check all TypeScript sources |
 | `npm test` | Run unit and protocol tests |
 | `npm run build` | Bundle both plugin adapters |
-| `npm run smoke` | Exercise the built Claude hook and MCP server |
+| `npm run smoke` | Exercise the built Claude and Qoder hooks, the opencode plugin, and the MCP server |
 | `npm run benchmark` | Measure synthetic compaction ratios |
 | `npm run package` | Create installable directories under `release/` |
 | `claude plugin validate packages/claude` | Validate the Claude plugin |
@@ -202,10 +230,12 @@ The `packages/*/dist` bundles are tracked so marketplace installs work without a
 
 ```text
 packages/
-├── core/        # Compaction policies, configuration, artifact storage
+├── core/        # Compaction policies, configuration, artifact storage, shared hook handler
 ├── mcp-server/  # compact_read, compact_search, compact_run, output_slice
 ├── claude/      # Claude manifest, hooks, skill, bundled runtime
-└── codex/       # Codex manifest, hooks, skill, bundled runtime
+├── codex/       # Codex manifest, hooks, skill, bundled runtime
+├── opencode/    # opencode plugin (npm package and drop-in bundle)
+└── qoder/       # Qoder plugin manifest, hooks, MCP config, skill, bundled runtime
 benchmarks/      # Reproducible synthetic fixtures
 scripts/         # Build, package, and smoke-test automation
 ```
@@ -216,6 +246,8 @@ scripts/         # Build, package, and smoke-test automation
 - Small outputs pass through unchanged by design.
 - Lossy context can still result from aggressive limits; retrieve the artifact when exact omitted details matter.
 - Codex does not currently have feature parity with Claude's automatic `PostToolUse` output replacement, so its MCP tools must be selected by the agent or requested explicitly.
+- opencode's hook covers its built-in `bash`, `read`, and `grep` tools only (MCP tool outputs are not hook-addressable), opencode truncates exceptionally large tool output before plugins run, and its TUI may display the original output while the model receives the compacted version.
+- Qoder reads hook configuration at startup, so restart after changing hooks or MCP settings; Qoder plugins cannot bundle rules, so the optional tool-preference rule is installed separately.
 - Very large commands that exceed the process buffer must be narrowed or split before compaction.
 
 ## Contributing
