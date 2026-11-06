@@ -489,7 +489,12 @@ function extractToolOutput(response) {
     if (value !== void 0) return value;
   }
   if (typeof record.stdout === "string" || typeof record.stderr === "string") {
-    return [record.stdout, record.stderr].filter((value) => typeof value === "string").join("\n");
+    const stdout = typeof record.stdout === "string" ? record.stdout : "";
+    const stderr = typeof record.stderr === "string" ? record.stderr : "";
+    if (stdout && stderr) return `${stdout}
+--- stderr ---
+${stderr}`;
+    return stdout || stderr;
   }
   return JSON.stringify(response);
 }
@@ -498,29 +503,37 @@ function isTextBlocks(value) {
     (part) => typeof part === "string" || typeof part === "object" && part !== null && "text" in part
   );
 }
+function lineCount2(text) {
+  return text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
+}
 function reshapeToolOutput(response, text) {
   if (typeof response === "string" || typeof response !== "object" || response === null) return text;
   if (Array.isArray(response)) {
     return isTextBlocks(response) ? [{ type: "text", text }] : text;
   }
   const record = { ...response };
+  let replaced = false;
   for (const key of ["content", "output", "text"]) {
     const value = record[key];
     if (typeof value === "string") {
       record[key] = text;
-      return record;
+      replaced = true;
+      break;
     }
     if (isTextBlocks(value)) {
       record[key] = [{ type: "text", text }];
-      return record;
+      replaced = true;
+      break;
     }
   }
-  if (typeof record.stdout === "string" || typeof record.stderr === "string") {
+  if (!replaced && (typeof record.stdout === "string" || typeof record.stderr === "string")) {
     record.stdout = text;
     record.stderr = "";
-    return record;
+    replaced = true;
   }
-  return text;
+  if (!replaced) return text;
+  if (typeof record.numLines === "number") record.numLines = lineCount2(text);
+  return record;
 }
 function metadataSuffix(response) {
   if (typeof response !== "object" || response === null) return "";

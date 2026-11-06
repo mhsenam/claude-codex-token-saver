@@ -44,7 +44,7 @@ Additional behavior:
 - Preserves test failures and nearby stack traces.
 - Groups search results by file with per-file limits.
 - Truncates exceptionally long lines, including Unicode-safe truncation.
-- Replacements mirror the original tool-output shape (content blocks, `stdout`/`stderr`, or plain string) instead of always substituting a plain string.
+- Replacements mirror the original tool-output shape (content blocks, `stdout`/`stderr`, or plain string) instead of always substituting a plain string, recount shape metadata such as `numLines` to describe the replacement, and mark the stderr section in merged process output with a `--- stderr ---` line.
 - Fails open: the original result passes through if compaction fails.
 - Supports configurable retention and output limits.
 

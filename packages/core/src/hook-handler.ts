@@ -40,7 +40,10 @@ export function extractToolOutput(response: unknown): string {
     if (value !== undefined) return value;
   }
   if (typeof record.stdout === "string" || typeof record.stderr === "string") {
-    return [record.stdout, record.stderr].filter((value) => typeof value === "string").join("\n");
+    const stdout = typeof record.stdout === "string" ? record.stdout : "";
+    const stderr = typeof record.stderr === "string" ? record.stderr : "";
+    if (stdout && stderr) return `${stdout}\n--- stderr ---\n${stderr}`;
+    return stdout || stderr;
   }
   return JSON.stringify(response);
 }
@@ -54,6 +57,10 @@ function isTextBlocks(value: unknown): boolean {
   );
 }
 
+function lineCount(text: string): number {
+  return text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
+}
+
 // Claude Code documents that a PostToolUse replacement "must match the tool's
 // output shape", so put the compacted text back into the same field the
 // original used instead of always substituting a plain string. Falls back to a
@@ -65,23 +72,31 @@ export function reshapeToolOutput(response: unknown, text: string): unknown {
   }
 
   const record = { ...(response as Record<string, unknown>) };
+  let replaced = false;
   for (const key of ["content", "output", "text"] as const) {
     const value = record[key];
     if (typeof value === "string") {
       record[key] = text;
-      return record;
+      replaced = true;
+      break;
     }
     if (isTextBlocks(value)) {
       record[key] = [{ type: "text", text }];
-      return record;
+      replaced = true;
+      break;
     }
   }
-  if (typeof record.stdout === "string" || typeof record.stderr === "string") {
+  if (!replaced && (typeof record.stdout === "string" || typeof record.stderr === "string")) {
     record.stdout = text;
     record.stderr = "";
-    return record;
+    replaced = true;
   }
-  return text;
+  if (!replaced) return text;
+
+  // Counts that describe the replaced text must describe the replacement, or
+  // the model may trust the original size (e.g. Grep's numLines).
+  if (typeof record.numLines === "number") record.numLines = lineCount(text);
+  return record;
 }
 
 function metadataSuffix(response: unknown): string {

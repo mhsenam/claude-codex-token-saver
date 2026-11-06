@@ -114,5 +114,40 @@ test("read compaction is opt-in and not applied with defaults", async (t) => {
 
 test("tool output extraction supports text arrays and process results", () => {
   assert.equal(extractToolOutput({ content: [{ type: "text", text: "one" }, { type: "text", text: "two" }] }), "one\ntwo");
-  assert.equal(extractToolOutput({ stdout: "out", stderr: "err" }), "out\nerr");
+  assert.equal(extractToolOutput({ stdout: "out", stderr: "err" }), "out\n--- stderr ---\nerr");
+  assert.equal(extractToolOutput({ stdout: "out only" }), "out only");
+  assert.equal(extractToolOutput({ stderr: "err only" }), "err only");
+});
+
+test("grep replacement recounts numLines and preserves search metadata", async (t) => {
+  const store = await storeFor(t);
+  const content = Array.from({ length: 800 }, (_, index) => `src/file.ts:${index + 1}:match`).join("\n");
+  const result = await handlePostToolUse({
+    session_id: "grep-shape",
+    tool_name: "Grep",
+    tool_input: { pattern: "match" },
+    tool_response: {
+      mode: "content",
+      numFiles: 3,
+      filenames: ["src/file.ts", "src/other.ts", "src/more.ts"],
+      content,
+      numLines: 800,
+    },
+  }, resolveConfig(), store);
+
+  const updated = (result?.hookSpecificOutput as {
+    updatedToolOutput: {
+      mode: string;
+      numFiles: number;
+      filenames: string[];
+      content: string;
+      numLines: number;
+    };
+  }).updatedToolOutput;
+  assert.match(updated.content, /\[token-saver\] search:/);
+  assert.equal(updated.numLines, updated.content.split("\n").length, "numLines must describe the replacement");
+  assert.ok(updated.numLines < 800);
+  assert.equal(updated.mode, "content");
+  assert.deepEqual(updated.filenames, ["src/file.ts", "src/other.ts", "src/more.ts"]);
+  assert.equal(updated.numFiles, 3);
 });
