@@ -821,10 +821,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path4) {
-  if (!path4)
+function getElementAtPath(obj, path6) {
+  if (!path6)
     return obj;
-  return path4.reduce((acc, key) => acc?.[key], obj);
+  return path6.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -1164,11 +1164,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path4, issues) {
+function prefixIssues(path6, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path4);
+    iss.path.unshift(path6);
     return iss;
   });
 }
@@ -1630,16 +1630,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path4 = []) => {
+  const processError = (error63, path6 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path4, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -1678,17 +1678,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path4 = []) => {
+  const processError = (error63, path6 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path4, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -1727,8 +1727,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path4 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path4) {
+  const path6 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path6) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -18866,13 +18866,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path4 = ref.slice(1).split("/").filter(Boolean);
-  if (path4.length === 0) {
+  const path6 = ref.slice(1).split("/").filter(Boolean);
+  if (path6.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path4[0] === defsKey) {
-    const key = path4[1] === void 0 ? void 0 : decodeJSONPointerSegment(path4[1]);
+  if (path6[0] === defsKey) {
+    const key = path6[1] === void 0 ? void 0 : decodeJSONPointerSegment(path6[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -19767,6 +19767,8 @@ async function summarizeStats(root) {
     dedupHits: 0,
     retrievals: 0,
     rewrites: 0,
+    evictions: 0,
+    evictedBytes: 0,
     originalBytes: 0,
     returnedBytes: 0,
     dedupedOriginalBytes: 0,
@@ -19819,6 +19821,9 @@ async function summarizeStats(root) {
       const kindStats = summary.perKind[String(event.kind) ?? "shell"] ?? emptyKindStats();
       kindStats.rewrites += 1;
       summary.perKind[String(event.kind) ?? "shell"] = kindStats;
+    } else if (event.type === "evict") {
+      summary.evictions += 1;
+      summary.evictedBytes += asNumber(event.bytes);
     }
   }
   summary.sessions = sessions.size;
@@ -19831,8 +19836,8 @@ async function summarizeStats(root) {
 function formatStatsSummary(summary) {
   const lines2 = [
     "[token-saver] session statistics (bytes/4 token estimates, not billed tokens)",
-    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | sessions: ${summary.sessions}`,
-    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)`
+    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | evictions: ${summary.evictions} | sessions: ${summary.sessions}`,
+    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)` + (summary.evictions > 0 ? ` | evicted from history: ${summary.evictedBytes} B` : "")
   ];
   const kinds = Object.entries(summary.perKind);
   if (kinds.length > 0) {
@@ -19933,6 +19938,114 @@ var ArtifactStore = class {
     }
   }
 };
+
+// packages/core/src/config.ts
+var toolKinds = ["shell", "test", "search", "read"];
+var defaultConfig = {
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
+  maxOutputLines: 120,
+  maxOutputBytes: 3e4,
+  maxLineLength: 500,
+  headLines: 40,
+  tailLines: 60,
+  searchPerFile: 8,
+  contextLines: 2,
+  retentionHours: 24,
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true,
+  policyBudgets: {}
+};
+function integer2(value, fallback, min, max) {
+  if (value === void 0) return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+function flag(value, fallback) {
+  if (value === void 0) return fallback;
+  if (value === "0" || value === "false") return false;
+  if (value === "1" || value === "true") return true;
+  return fallback;
+}
+function policyConfig(config2, kind) {
+  const override = config2.policyBudgets[kind];
+  if (!override) return config2;
+  return {
+    ...config2,
+    maxOutputLines: override.maxOutputLines ?? config2.maxOutputLines,
+    maxOutputBytes: override.maxOutputBytes ?? config2.maxOutputBytes,
+    headLines: override.headLines ?? config2.headLines,
+    tailLines: override.tailLines ?? config2.tailLines
+  };
+}
+function resolveConfig(overrides = {}) {
+  const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
+  const policyBudgets = {};
+  for (const kind of toolKinds) {
+    const override = overrides.policyBudgets?.[kind];
+    if (override && Object.keys(override).length > 0) policyBudgets[kind] = { ...override };
+  }
+  return {
+    enabledTools: enabledTools ?? [...defaultConfig.enabledTools],
+    maxOutputLines: overrides.maxOutputLines ?? defaultConfig.maxOutputLines,
+    maxOutputBytes: overrides.maxOutputBytes ?? defaultConfig.maxOutputBytes,
+    maxLineLength: overrides.maxLineLength ?? defaultConfig.maxLineLength,
+    headLines: overrides.headLines ?? defaultConfig.headLines,
+    tailLines: overrides.tailLines ?? defaultConfig.tailLines,
+    searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
+    contextLines: overrides.contextLines ?? defaultConfig.contextLines,
+    retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
+    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
+    dedup: overrides.dedup ?? defaultConfig.dedup,
+    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
+    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands,
+    policyBudgets
+  };
+}
+function policyBudgetsFromEnv(env) {
+  const budgets = {};
+  for (const kind of toolKinds) {
+    const suffix = kind.toUpperCase();
+    const override = {};
+    const maxOutputLines = integer2(env[`TOKEN_SAVER_MAX_LINES_${suffix}`], 0, 10, 2e3);
+    if (maxOutputLines > 0) override.maxOutputLines = maxOutputLines;
+    const maxOutputBytes = integer2(env[`TOKEN_SAVER_MAX_BYTES_${suffix}`], 0, 1e3, 2e6);
+    if (maxOutputBytes > 0) override.maxOutputBytes = maxOutputBytes;
+    const headLines = integer2(env[`TOKEN_SAVER_HEAD_LINES_${suffix}`], -1, 0, 500);
+    if (headLines >= 0) override.headLines = headLines;
+    const tailLines = integer2(env[`TOKEN_SAVER_TAIL_LINES_${suffix}`], -1, 0, 500);
+    if (tailLines >= 0) override.tailLines = tailLines;
+    if (Object.keys(override).length > 0) budgets[kind] = override;
+  }
+  return budgets;
+}
+function configFromEnv(env = process.env) {
+  const enabledTools = env.TOKEN_SAVER_TOOLS?.split(",").map((value) => value.trim()).filter((value) => toolKinds.includes(value));
+  return resolveConfig({
+    enabledTools,
+    maxOutputLines: integer2(env.TOKEN_SAVER_MAX_LINES, defaultConfig.maxOutputLines, 10, 2e3),
+    maxOutputBytes: integer2(env.TOKEN_SAVER_MAX_BYTES, defaultConfig.maxOutputBytes, 1e3, 2e6),
+    maxLineLength: integer2(env.TOKEN_SAVER_MAX_LINE_LENGTH, defaultConfig.maxLineLength, 80, 1e4),
+    headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
+    tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
+    searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
+    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
+    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
+    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
+    policyBudgets: policyBudgetsFromEnv(env),
+    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
+    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
+    rewriteCommands: flag(
+      env.TOKEN_SAVER_REWRITE,
+      defaultConfig.rewriteCommands && process.platform !== "win32"
+    )
+  });
+}
 
 // packages/core/src/dedup.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -20144,17 +20257,18 @@ function result(input2, text, compacted, omittedLines) {
   };
 }
 function compactText(input2, kind, config2) {
+  const effective = policyConfig(config2, kind);
   const originalLines = lineCount(input2);
-  const hasLongLine = input2.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > config2.maxLineLength);
-  if (!config2.enabledTools.includes(kind) || originalLines <= config2.maxOutputLines && Buffer.byteLength(input2) <= config2.maxOutputBytes && !hasLongLine) {
+  const hasLongLine = input2.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > effective.maxLineLength);
+  if (!effective.enabledTools.includes(kind) || originalLines <= effective.maxOutputLines && Buffer.byteLength(input2) <= effective.maxOutputBytes && !hasLongLine) {
     return result(input2, input2, false, 0);
   }
-  const lines2 = normalizedLines(input2, config2);
+  const lines2 = normalizedLines(input2, effective);
   if (kind === "search") {
-    const search = renderSearch(lines2, config2);
+    const search = renderSearch(lines2, effective);
     if (search) return result(input2, search.body.join("\n"), true, search.omitted);
   }
-  const rendered = renderSelected(lines2, selectedIndexes(lines2, kind, config2));
+  const rendered = renderSelected(lines2, selectedIndexes(lines2, kind, effective));
   const collapsed = kind === "search" ? rendered : collapseAdjacent(rendered.body);
   return result(
     input2,
@@ -20240,80 +20354,161 @@ function detectToolKind(toolName, toolInput) {
   return "shell";
 }
 
-// packages/core/src/config.ts
-var toolKinds = ["shell", "test", "search", "read"];
-var defaultConfig = {
-  // "read" is deliberately not enabled by default: an agent that edits a file it
-  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
-  // recoverable through the explicit compact_read tool; enable automatic read
-  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
-  enabledTools: toolKinds.filter((kind) => kind !== "read"),
-  maxOutputLines: 120,
-  maxOutputBytes: 3e4,
-  maxLineLength: 500,
-  headLines: 40,
-  tailLines: 60,
-  searchPerFile: 8,
-  contextLines: 2,
-  retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024,
-  dedup: true,
-  dedupPreviewLines: 20,
-  rewriteCommands: true
+// packages/core/src/pre-compact.ts
+import { promises as fs4 } from "node:fs";
+import os2 from "node:os";
+import path4 from "node:path";
+var preCompactInstructions = "Preserve the current objective, pending tasks, user constraints, modified file paths, exact errors, and decisions. Omit redundant tool output while retaining token-saver artifact IDs needed for retrieval.";
+var defaultEvictionOptions = {
+  minArtifacts: 3,
+  minBytes: 1e5,
+  maxCandidates: 5,
+  retentionHours: 24
 };
-function integer2(value, fallback, min, max) {
-  if (value === void 0) return fallback;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+function defaultRoot() {
+  return process.env.TOKEN_SAVER_DATA_DIR ?? path4.join(os2.homedir(), ".token-saver", "outputs");
 }
-function flag(value, fallback) {
-  if (value === void 0) return fallback;
-  if (value === "0" || value === "false") return false;
-  if (value === "1" || value === "true") return true;
-  return fallback;
+async function evictionCandidates(root, sessionId, maxCandidates = defaultEvictionOptions.maxCandidates, retentionHours = defaultEvictionOptions.retentionHours) {
+  let raw;
+  try {
+    raw = await fs4.readFile(statsFilePath(root), "utf8");
+  } catch {
+    return [];
+  }
+  const cutoff = Date.now() - retentionHours * 60 * 60 * 1e3;
+  const byArtifact = /* @__PURE__ */ new Map();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (event.type !== "compact" && event.type !== "dedup") continue;
+    if (event.session !== sessionId) continue;
+    if (typeof event.artifactId !== "string" || event.artifactId.length === 0) continue;
+    const ts = typeof event.ts === "number" ? event.ts : 0;
+    if (ts !== 0 && ts < cutoff) continue;
+    const bytes = typeof event.originalBytes === "number" ? event.originalBytes : 0;
+    const existing = byArtifact.get(event.artifactId);
+    if (existing) {
+      existing.bytes = Math.max(existing.bytes, bytes);
+      existing.ts = Math.min(existing.ts, ts || existing.ts);
+    } else {
+      byArtifact.set(event.artifactId, { artifactId: event.artifactId, bytes, ts });
+    }
+  }
+  return [...byArtifact.values()].sort((left, right) => left.ts - right.ts || right.bytes - left.bytes).slice(0, maxCandidates);
 }
-function resolveConfig(overrides = {}) {
-  const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
-  return {
-    enabledTools: enabledTools ?? [...defaultConfig.enabledTools],
-    maxOutputLines: overrides.maxOutputLines ?? defaultConfig.maxOutputLines,
-    maxOutputBytes: overrides.maxOutputBytes ?? defaultConfig.maxOutputBytes,
-    maxLineLength: overrides.maxLineLength ?? defaultConfig.maxLineLength,
-    headLines: overrides.headLines ?? defaultConfig.headLines,
-    tailLines: overrides.tailLines ?? defaultConfig.tailLines,
-    searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
-    contextLines: overrides.contextLines ?? defaultConfig.contextLines,
-    retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
-    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
-    dedup: overrides.dedup ?? defaultConfig.dedup,
-    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
-    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands
-  };
+function evictionGuidance(candidates, options = {}) {
+  const limits = { ...defaultEvictionOptions, ...options };
+  if (candidates.length < limits.minArtifacts) return void 0;
+  const totalBytes = candidates.reduce((sum, candidate) => sum + candidate.bytes, 0);
+  if (totalBytes < limits.minBytes) return void 0;
+  const list = candidates.map((candidate) => `${candidate.artifactId} (${Math.max(1, Math.round(candidate.bytes / 1024))} KB)`).join(", ");
+  return `Token-saver eviction: this session stores ${candidates.length} compacted tool outputs (~${Math.round(totalBytes / 1024)} KB) as local artifacts: ${list}. When trimming older turns, replace such verbose tool results with a single placeholder line like "[token-saver artifact <id>: full output stored locally; retrieve exact lines with output_slice]" instead of summarizing them, oldest first. Preserve the newest 2 exchanges verbatim, keep every exact error message, and never evict the current turn.`;
 }
-function configFromEnv(env = process.env) {
-  const enabledTools = env.TOKEN_SAVER_TOOLS?.split(",").map((value) => value.trim()).filter((value) => toolKinds.includes(value));
-  return resolveConfig({
-    enabledTools,
-    maxOutputLines: integer2(env.TOKEN_SAVER_MAX_LINES, defaultConfig.maxOutputLines, 10, 2e3),
-    maxOutputBytes: integer2(env.TOKEN_SAVER_MAX_BYTES, defaultConfig.maxOutputBytes, 1e3, 2e6),
-    maxLineLength: integer2(env.TOKEN_SAVER_MAX_LINE_LENGTH, defaultConfig.maxLineLength, 80, 1e4),
-    headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
-    tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
-    searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
-    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
-    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
-    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
-    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
-    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
-    rewriteCommands: flag(
-      env.TOKEN_SAVER_REWRITE,
-      defaultConfig.rewriteCommands && process.platform !== "win32"
-    )
-  });
+async function buildPreCompactInstructions(options = {}) {
+  if (process.env.TOKEN_SAVER_EVICTION === "0" || !options.sessionId) return preCompactInstructions;
+  try {
+    const retention = Number(process.env.TOKEN_SAVER_RETENTION_HOURS);
+    const retentionHours = Number.isInteger(retention) && retention >= 1 && retention <= 720 ? retention : defaultEvictionOptions.retentionHours;
+    const candidates = await evictionCandidates(
+      options.root ?? defaultRoot(),
+      options.sessionId,
+      options.options?.maxCandidates,
+      retentionHours
+    );
+    const guidance = evictionGuidance(candidates, options.options);
+    return guidance ? `${preCompactInstructions}
+${guidance}` : preCompactInstructions;
+  } catch {
+    return preCompactInstructions;
+  }
 }
 
-// packages/core/src/pre-compact.ts
-var preCompactInstructions = "Preserve the current objective, pending tasks, user constraints, modified file paths, exact errors, and decisions. Omit redundant tool output while retaining token-saver artifact IDs needed for retrieval.";
+// packages/opencode/src/eviction.ts
+import { promises as fs5 } from "node:fs";
+import path5 from "node:path";
+var artifactIdPattern = /^[a-zA-Z0-9_-]{1,64}\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+var compactedHeaderPattern = /\[token-saver\] \w+: \d+ lines\/\d+ B → \d+ lines\/\d+ B\. Full output: ([a-zA-Z0-9_-]+\.[0-9a-f-]{36});/;
+var duplicateHeaderPattern = /\[token-saver\] duplicate:[^\n]*artifactId=([a-zA-Z0-9_-]+\.[0-9a-f-]{36})/;
+var minCandidateBytes = 1e3;
+function placeholder(artifactId) {
+  return `[token-saver] evicted: this result's full output is stored locally (artifactId=${artifactId}); retrieve exact lines with output_slice.`;
+}
+function parseArtifactId(output2) {
+  if (typeof output2 !== "string" || output2.length < minCandidateBytes) return void 0;
+  return compactedHeaderPattern.exec(output2)?.[1] ?? duplicateHeaderPattern.exec(output2)?.[1];
+}
+var defaultEvictionOptions2 = {
+  keepRecent: 3,
+  minNetSavings: 6e3
+};
+function evictionOptionsFromEnv(env = process.env) {
+  if (env.TOKEN_SAVER_EVICTION === "0") return void 0;
+  const integer3 = (value, fallback, min, max) => {
+    if (value === void 0) return fallback;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+  };
+  return {
+    keepRecent: integer3(env.TOKEN_SAVER_EVICTION_KEEP_RECENT, defaultEvictionOptions2.keepRecent, 0, 100),
+    minNetSavings: integer3(env.TOKEN_SAVER_EVICTION_MIN_NET_SAVINGS, defaultEvictionOptions2.minNetSavings, 0, 1e6)
+  };
+}
+async function evictMessages(messages, options, deps) {
+  const candidates = [];
+  for (const message of messages ?? []) {
+    for (const part of message.parts ?? []) {
+      const toolPart = part;
+      if (!toolPart || toolPart.type !== "tool") continue;
+      if (toolPart.state?.status !== "completed") continue;
+      const output2 = toolPart.state.output;
+      if (typeof output2 !== "string") continue;
+      const artifactId = parseArtifactId(output2);
+      if (!artifactId) continue;
+      candidates.push({
+        sessionID: toolPart.sessionID,
+        state: toolPart.state,
+        artifactId,
+        savings: Buffer.byteLength(output2) - Buffer.byteLength(placeholder(artifactId))
+      });
+    }
+  }
+  const evictable = candidates.slice(0, Math.max(0, candidates.length - options.keepRecent));
+  if (evictable.length === 0) return { evicted: 0, bytesSaved: 0 };
+  const verified = [];
+  let totalSavings = 0;
+  for (const candidate of evictable) {
+    if (!artifactIdPattern.test(candidate.artifactId)) continue;
+    if (!await deps.artifactExists(candidate.artifactId)) continue;
+    verified.push(candidate);
+    totalSavings += candidate.savings;
+  }
+  if (verified.length === 0 || totalSavings < options.minNetSavings) {
+    return { evicted: 0, bytesSaved: 0 };
+  }
+  for (const candidate of verified) {
+    candidate.state.output = placeholder(candidate.artifactId);
+    await deps.recordEvict(candidate.sessionID, candidate.artifactId, candidate.savings);
+  }
+  return { evicted: verified.length, bytesSaved: totalSavings };
+}
+function artifactExistsFactory(root) {
+  return async (artifactId) => {
+    try {
+      await fs5.access(path5.join(root, `${artifactId.replace(".", path5.sep)}.log`));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+}
+function recordEvictFactory(root) {
+  return (session, artifactId, bytes) => recordStats(root, { type: "evict", session, artifactId, bytes });
+}
 
 // packages/opencode/src/plugin.ts
 var compactableTools = /* @__PURE__ */ new Set(["bash", "read", "grep"]);
@@ -20405,9 +20600,30 @@ ${slice.text}`;
         }
       }
     },
-    "experimental.session.compacting": async (_input, output2) => {
-      if (Array.isArray(output2.context) && !output2.context.includes(preCompactInstructions)) {
-        output2.context.push(preCompactInstructions);
+    "experimental.session.compacting": async (input2, output2) => {
+      const instructions = await buildPreCompactInstructions({
+        sessionId: input2?.sessionID || "opencode",
+        root: store.root
+      });
+      if (Array.isArray(output2.context) && !output2.context.includes(instructions)) {
+        output2.context.push(instructions);
+      }
+    },
+    // Evict artifact-backed tool results older than a few turns from the
+    // outgoing request; full output stays recoverable via output_slice.
+    "experimental.chat.messages.transform": async (_input, output2) => {
+      const options = evictionOptionsFromEnv();
+      if (!options) return;
+      try {
+        await evictMessages(output2.messages, options, {
+          artifactExists: artifactExistsFactory(store.root),
+          recordEvict: recordEvictFactory(store.root)
+        });
+      } catch (error62) {
+        if (process.env.TOKEN_SAVER_DEBUG === "1") {
+          process.stderr.write(`token-saver: ${error62 instanceof Error ? error62.message : String(error62)}
+`);
+        }
       }
     },
     // @opencode-ai/plugin types custom-tool args against its own zod copy, which is

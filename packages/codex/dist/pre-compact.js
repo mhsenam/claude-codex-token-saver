@@ -17,7 +17,8 @@ var defaultConfig = {
   maxFileBytes: 16 * 1024 * 1024,
   dedup: true,
   dedupPreviewLines: 20,
-  rewriteCommands: true
+  rewriteCommands: true,
+  policyBudgets: {}
 };
 
 // packages/core/src/pre-compact.ts

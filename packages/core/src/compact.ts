@@ -1,4 +1,5 @@
 import { ArtifactStore } from "./artifact-store.js";
+import { policyConfig } from "./config.js";
 import { DedupIndex, outputHash } from "./dedup.js";
 import { recordStats } from "./stats.js";
 import type {
@@ -213,22 +214,23 @@ export function compactText(
   kind: ToolKind,
   config: CompactionConfig,
 ): TextCompaction {
+  const effective = policyConfig(config, kind);
   const originalLines = lineCount(input);
-  const hasLongLine = input.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > config.maxLineLength);
+  const hasLongLine = input.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > effective.maxLineLength);
   if (
-    !config.enabledTools.includes(kind) ||
-    (originalLines <= config.maxOutputLines && Buffer.byteLength(input) <= config.maxOutputBytes && !hasLongLine)
+    !effective.enabledTools.includes(kind) ||
+    (originalLines <= effective.maxOutputLines && Buffer.byteLength(input) <= effective.maxOutputBytes && !hasLongLine)
   ) {
     return result(input, input, false, 0);
   }
 
-  const lines = normalizedLines(input, config);
+  const lines = normalizedLines(input, effective);
   if (kind === "search") {
-    const search = renderSearch(lines, config);
+    const search = renderSearch(lines, effective);
     if (search) return result(input, search.body.join("\n"), true, search.omitted);
   }
 
-  const rendered = renderSelected(lines, selectedIndexes(lines, kind, config));
+  const rendered = renderSelected(lines, selectedIndexes(lines, kind, effective));
   const collapsed = kind === "search" ? rendered : collapseAdjacent(rendered.body);
   return result(
     input,

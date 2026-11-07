@@ -2,16 +2,22 @@ import type { Plugin } from "@opencode-ai/plugin";
 import { z } from "zod";
 import {
   ArtifactStore,
+  buildPreCompactInstructions,
   compactOutput,
   configFromEnv,
   detectToolKind,
   formatStatsSummary,
   isVerboseCommand,
-  preCompactInstructions,
   recordStats,
   rewriteVerboseCommand,
   summarizeStats,
 } from "../../core/src/index.js";
+import {
+  artifactExistsFactory,
+  evictMessages,
+  evictionOptionsFromEnv,
+  recordEvictFactory,
+} from "./eviction.js";
 
 type PluginHooks = Awaited<ReturnType<Plugin>>;
 
@@ -112,9 +118,29 @@ export const TokenSaverPlugin: Plugin = async () => {
         }
       }
     },
-    "experimental.session.compacting": async (_input, output) => {
-      if (Array.isArray(output.context) && !output.context.includes(preCompactInstructions)) {
-        output.context.push(preCompactInstructions);
+    "experimental.session.compacting": async (input, output) => {
+      const instructions = await buildPreCompactInstructions({
+        sessionId: input?.sessionID || "opencode",
+        root: store.root,
+      });
+      if (Array.isArray(output.context) && !output.context.includes(instructions)) {
+        output.context.push(instructions);
+      }
+    },
+    // Evict artifact-backed tool results older than a few turns from the
+    // outgoing request; full output stays recoverable via output_slice.
+    "experimental.chat.messages.transform": async (_input, output) => {
+      const options = evictionOptionsFromEnv();
+      if (!options) return;
+      try {
+        await evictMessages(output.messages, options, {
+          artifactExists: artifactExistsFactory(store.root),
+          recordEvict: recordEvictFactory(store.root),
+        });
+      } catch (error) {
+        if (process.env.TOKEN_SAVER_DEBUG === "1") {
+          process.stderr.write(`token-saver: ${error instanceof Error ? error.message : String(error)}\n`);
+        }
       }
     },
     // @opencode-ai/plugin types custom-tool args against its own zod copy, which is

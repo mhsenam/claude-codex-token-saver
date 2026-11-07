@@ -1,4 +1,4 @@
-# opencode-token-saver
+# @mhsenam/opencode-token-saver
 
 [TokenSaver](https://github.com/mhsenam/claude-codex-token-saver) for [opencode](https://opencode.ai). Compacts verbose `bash`, `read`, and `grep` tool output before it enters model context. The complete output is stored locally and recoverable by exact line range with the bundled `output_slice` tool.
 
@@ -6,18 +6,20 @@ Compaction is deterministic and local: no additional model calls, no cloud proce
 
 ## Install
 
+The plugin is published to npm as `@mhsenam/opencode-token-saver`. (The unscoped name `opencode-token-saver` belongs to an unrelated project.)
+
 Add the package to the `plugin` array in `opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-token-saver"]
+  "plugin": ["@mhsenam/opencode-token-saver"]
 }
 ```
 
 opencode installs npm plugins automatically at startup.
 
-Alternative drop-in install: copy `dist/plugin.js` into `.opencode/plugins/` (project) or `~/.config/opencode/plugins/` (global) as `token-saver.js`.
+Alternative drop-in install (works today, no npm needed): copy `dist/plugin.js` into `.opencode/plugins/` (project) or `~/.config/opencode/plugins/` (global) as `token-saver.js`.
 
 ## How it works
 
@@ -43,7 +45,7 @@ Call `output_slice` with the artifact ID to retrieve any line range. Explicitly 
 | `TOKEN_SAVER_RETENTION_HOURS` | `24` | Full-output artifact retention |
 | `TOKEN_SAVER_DATA_DIR` | `~/.token-saver/outputs` | Artifact storage directory |
 
-The full variable list is documented in the [repository README](https://github.com/mhsenam/claude-codex-token-saver#configuration).
+The full variable list, including per-policy budgets such as `TOKEN_SAVER_MAX_LINES_TEST`, is documented in the [repository README](https://github.com/mhsenam/claude-codex-token-saver#configuration).
 
 ## Notes and limitations
 

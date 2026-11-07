@@ -36695,6 +36695,8 @@ async function summarizeStats(root) {
     dedupHits: 0,
     retrievals: 0,
     rewrites: 0,
+    evictions: 0,
+    evictedBytes: 0,
     originalBytes: 0,
     returnedBytes: 0,
     dedupedOriginalBytes: 0,
@@ -36747,6 +36749,9 @@ async function summarizeStats(root) {
       const kindStats = summary.perKind[String(event.kind) ?? "shell"] ?? emptyKindStats();
       kindStats.rewrites += 1;
       summary.perKind[String(event.kind) ?? "shell"] = kindStats;
+    } else if (event.type === "evict") {
+      summary.evictions += 1;
+      summary.evictedBytes += asNumber(event.bytes);
     }
   }
   summary.sessions = sessions.size;
@@ -36759,8 +36764,8 @@ async function summarizeStats(root) {
 function formatStatsSummary(summary) {
   const lines2 = [
     "[token-saver] session statistics (bytes/4 token estimates, not billed tokens)",
-    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | sessions: ${summary.sessions}`,
-    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)`
+    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | evictions: ${summary.evictions} | sessions: ${summary.sessions}`,
+    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)` + (summary.evictions > 0 ? ` | evicted from history: ${summary.evictedBytes} B` : "")
   ];
   const kinds = Object.entries(summary.perKind);
   if (kinds.length > 0) {
@@ -36861,6 +36866,114 @@ var ArtifactStore = class {
     }
   }
 };
+
+// packages/core/src/config.ts
+var toolKinds = ["shell", "test", "search", "read"];
+var defaultConfig = {
+  // "read" is deliberately not enabled by default: an agent that edits a file it
+  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
+  // recoverable through the explicit compact_read tool; enable automatic read
+  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
+  enabledTools: toolKinds.filter((kind) => kind !== "read"),
+  maxOutputLines: 120,
+  maxOutputBytes: 3e4,
+  maxLineLength: 500,
+  headLines: 40,
+  tailLines: 60,
+  searchPerFile: 8,
+  contextLines: 2,
+  retentionHours: 24,
+  maxFileBytes: 16 * 1024 * 1024,
+  dedup: true,
+  dedupPreviewLines: 20,
+  rewriteCommands: true,
+  policyBudgets: {}
+};
+function integer2(value, fallback, min, max) {
+  if (value === void 0) return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+function flag(value, fallback) {
+  if (value === void 0) return fallback;
+  if (value === "0" || value === "false") return false;
+  if (value === "1" || value === "true") return true;
+  return fallback;
+}
+function policyConfig(config3, kind) {
+  const override = config3.policyBudgets[kind];
+  if (!override) return config3;
+  return {
+    ...config3,
+    maxOutputLines: override.maxOutputLines ?? config3.maxOutputLines,
+    maxOutputBytes: override.maxOutputBytes ?? config3.maxOutputBytes,
+    headLines: override.headLines ?? config3.headLines,
+    tailLines: override.tailLines ?? config3.tailLines
+  };
+}
+function resolveConfig(overrides = {}) {
+  const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
+  const policyBudgets = {};
+  for (const kind of toolKinds) {
+    const override = overrides.policyBudgets?.[kind];
+    if (override && Object.keys(override).length > 0) policyBudgets[kind] = { ...override };
+  }
+  return {
+    enabledTools: enabledTools ?? [...defaultConfig.enabledTools],
+    maxOutputLines: overrides.maxOutputLines ?? defaultConfig.maxOutputLines,
+    maxOutputBytes: overrides.maxOutputBytes ?? defaultConfig.maxOutputBytes,
+    maxLineLength: overrides.maxLineLength ?? defaultConfig.maxLineLength,
+    headLines: overrides.headLines ?? defaultConfig.headLines,
+    tailLines: overrides.tailLines ?? defaultConfig.tailLines,
+    searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
+    contextLines: overrides.contextLines ?? defaultConfig.contextLines,
+    retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
+    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
+    dedup: overrides.dedup ?? defaultConfig.dedup,
+    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
+    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands,
+    policyBudgets
+  };
+}
+function policyBudgetsFromEnv(env) {
+  const budgets = {};
+  for (const kind of toolKinds) {
+    const suffix = kind.toUpperCase();
+    const override = {};
+    const maxOutputLines = integer2(env[`TOKEN_SAVER_MAX_LINES_${suffix}`], 0, 10, 2e3);
+    if (maxOutputLines > 0) override.maxOutputLines = maxOutputLines;
+    const maxOutputBytes = integer2(env[`TOKEN_SAVER_MAX_BYTES_${suffix}`], 0, 1e3, 2e6);
+    if (maxOutputBytes > 0) override.maxOutputBytes = maxOutputBytes;
+    const headLines = integer2(env[`TOKEN_SAVER_HEAD_LINES_${suffix}`], -1, 0, 500);
+    if (headLines >= 0) override.headLines = headLines;
+    const tailLines = integer2(env[`TOKEN_SAVER_TAIL_LINES_${suffix}`], -1, 0, 500);
+    if (tailLines >= 0) override.tailLines = tailLines;
+    if (Object.keys(override).length > 0) budgets[kind] = override;
+  }
+  return budgets;
+}
+function configFromEnv(env = process.env) {
+  const enabledTools = env.TOKEN_SAVER_TOOLS?.split(",").map((value) => value.trim()).filter((value) => toolKinds.includes(value));
+  return resolveConfig({
+    enabledTools,
+    maxOutputLines: integer2(env.TOKEN_SAVER_MAX_LINES, defaultConfig.maxOutputLines, 10, 2e3),
+    maxOutputBytes: integer2(env.TOKEN_SAVER_MAX_BYTES, defaultConfig.maxOutputBytes, 1e3, 2e6),
+    maxLineLength: integer2(env.TOKEN_SAVER_MAX_LINE_LENGTH, defaultConfig.maxLineLength, 80, 1e4),
+    headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
+    tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
+    searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
+    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
+    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
+    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
+    policyBudgets: policyBudgetsFromEnv(env),
+    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
+    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
+    rewriteCommands: flag(
+      env.TOKEN_SAVER_REWRITE,
+      defaultConfig.rewriteCommands && process.platform !== "win32"
+    )
+  });
+}
 
 // packages/core/src/dedup.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -37049,17 +37162,18 @@ function result(input2, text2, compacted, omittedLines) {
   };
 }
 function compactText(input2, kind, config3) {
+  const effective = policyConfig(config3, kind);
   const originalLines = lineCount(input2);
-  const hasLongLine = input2.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > config3.maxLineLength);
-  if (!config3.enabledTools.includes(kind) || originalLines <= config3.maxOutputLines && Buffer.byteLength(input2) <= config3.maxOutputBytes && !hasLongLine) {
+  const hasLongLine = input2.split(/\r\n|\r|\n/).some((line) => Array.from(line).length > effective.maxLineLength);
+  if (!effective.enabledTools.includes(kind) || originalLines <= effective.maxOutputLines && Buffer.byteLength(input2) <= effective.maxOutputBytes && !hasLongLine) {
     return result(input2, input2, false, 0);
   }
-  const lines2 = normalizedLines(input2, config3);
+  const lines2 = normalizedLines(input2, effective);
   if (kind === "search") {
-    const search = renderSearch(lines2, config3);
+    const search = renderSearch(lines2, effective);
     if (search) return result(input2, search.body.join("\n"), true, search.omitted);
   }
-  const rendered = renderSelected(lines2, selectedIndexes(lines2, kind, config3));
+  const rendered = renderSelected(lines2, selectedIndexes(lines2, kind, effective));
   const collapsed = kind === "search" ? rendered : collapseAdjacent(rendered.body);
   return result(
     input2,
@@ -37143,78 +37257,6 @@ function detectToolKind(toolName, toolInput) {
     if (typeof command === "string" && testCommand.test(command)) return "test";
   }
   return "shell";
-}
-
-// packages/core/src/config.ts
-var toolKinds = ["shell", "test", "search", "read"];
-var defaultConfig = {
-  // "read" is deliberately not enabled by default: an agent that edits a file it
-  // has only seen as a head/tail preview produces wrong edits. Reads stay fully
-  // recoverable through the explicit compact_read tool; enable automatic read
-  // compaction with TOKEN_SAVER_TOOLS=shell,test,search,read.
-  enabledTools: toolKinds.filter((kind) => kind !== "read"),
-  maxOutputLines: 120,
-  maxOutputBytes: 3e4,
-  maxLineLength: 500,
-  headLines: 40,
-  tailLines: 60,
-  searchPerFile: 8,
-  contextLines: 2,
-  retentionHours: 24,
-  maxFileBytes: 16 * 1024 * 1024,
-  dedup: true,
-  dedupPreviewLines: 20,
-  rewriteCommands: true
-};
-function integer2(value, fallback, min, max) {
-  if (value === void 0) return fallback;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
-}
-function flag(value, fallback) {
-  if (value === void 0) return fallback;
-  if (value === "0" || value === "false") return false;
-  if (value === "1" || value === "true") return true;
-  return fallback;
-}
-function resolveConfig(overrides = {}) {
-  const enabledTools = overrides.enabledTools?.filter((kind) => toolKinds.includes(kind));
-  return {
-    enabledTools: enabledTools ?? [...defaultConfig.enabledTools],
-    maxOutputLines: overrides.maxOutputLines ?? defaultConfig.maxOutputLines,
-    maxOutputBytes: overrides.maxOutputBytes ?? defaultConfig.maxOutputBytes,
-    maxLineLength: overrides.maxLineLength ?? defaultConfig.maxLineLength,
-    headLines: overrides.headLines ?? defaultConfig.headLines,
-    tailLines: overrides.tailLines ?? defaultConfig.tailLines,
-    searchPerFile: overrides.searchPerFile ?? defaultConfig.searchPerFile,
-    contextLines: overrides.contextLines ?? defaultConfig.contextLines,
-    retentionHours: overrides.retentionHours ?? defaultConfig.retentionHours,
-    maxFileBytes: overrides.maxFileBytes ?? defaultConfig.maxFileBytes,
-    dedup: overrides.dedup ?? defaultConfig.dedup,
-    dedupPreviewLines: overrides.dedupPreviewLines ?? defaultConfig.dedupPreviewLines,
-    rewriteCommands: overrides.rewriteCommands ?? defaultConfig.rewriteCommands
-  };
-}
-function configFromEnv(env = process.env) {
-  const enabledTools = env.TOKEN_SAVER_TOOLS?.split(",").map((value) => value.trim()).filter((value) => toolKinds.includes(value));
-  return resolveConfig({
-    enabledTools,
-    maxOutputLines: integer2(env.TOKEN_SAVER_MAX_LINES, defaultConfig.maxOutputLines, 10, 2e3),
-    maxOutputBytes: integer2(env.TOKEN_SAVER_MAX_BYTES, defaultConfig.maxOutputBytes, 1e3, 2e6),
-    maxLineLength: integer2(env.TOKEN_SAVER_MAX_LINE_LENGTH, defaultConfig.maxLineLength, 80, 1e4),
-    headLines: integer2(env.TOKEN_SAVER_HEAD_LINES, defaultConfig.headLines, 0, 500),
-    tailLines: integer2(env.TOKEN_SAVER_TAIL_LINES, defaultConfig.tailLines, 0, 500),
-    searchPerFile: integer2(env.TOKEN_SAVER_SEARCH_PER_FILE, defaultConfig.searchPerFile, 1, 100),
-    retentionHours: integer2(env.TOKEN_SAVER_RETENTION_HOURS, defaultConfig.retentionHours, 1, 720),
-    dedup: flag(env.TOKEN_SAVER_DEDUP, defaultConfig.dedup),
-    dedupPreviewLines: integer2(env.TOKEN_SAVER_DEDUP_PREVIEW_LINES, defaultConfig.dedupPreviewLines, 1, 200),
-    // The rewrite template is POSIX sh; on Windows the host shell may not be bash,
-    // so rewriting stays opt-in there until TOKEN_SAVER_REWRITE=1 is set explicitly.
-    rewriteCommands: flag(
-      env.TOKEN_SAVER_REWRITE,
-      defaultConfig.rewriteCommands && process.platform !== "win32"
-    )
-  });
 }
 
 // packages/mcp-server/src/tools.ts

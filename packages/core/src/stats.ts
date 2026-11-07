@@ -5,7 +5,8 @@ export type StatsEvent =
   | { type: "compact"; session: string; kind: string; originalBytes: number; returnedBytes: number; artifactId: string }
   | { type: "dedup"; session: string; kind: string; originalBytes: number; returnedBytes: number; artifactId: string }
   | { type: "retrieve"; session: string; artifactId: string; startLine: number; maxLines: number }
-  | { type: "rewrite"; session: string; kind: string; commandBytes: number };
+  | { type: "rewrite"; session: string; kind: string; commandBytes: number }
+  | { type: "evict"; session: string; artifactId: string; bytes: number };
 
 interface RecordedEvent extends Record<string, unknown> {
   type: string;
@@ -49,6 +50,8 @@ export interface StatsSummary {
   dedupHits: number;
   retrievals: number;
   rewrites: number;
+  evictions: number;
+  evictedBytes: number;
   originalBytes: number;
   returnedBytes: number;
   dedupedOriginalBytes: number;
@@ -81,6 +84,8 @@ export async function summarizeStats(root: string): Promise<StatsSummary> {
     dedupHits: 0,
     retrievals: 0,
     rewrites: 0,
+    evictions: 0,
+    evictedBytes: 0,
     originalBytes: 0,
     returnedBytes: 0,
     dedupedOriginalBytes: 0,
@@ -136,6 +141,9 @@ export async function summarizeStats(root: string): Promise<StatsSummary> {
       const kindStats = summary.perKind[String(event.kind) ?? "shell"] ?? emptyKindStats();
       kindStats.rewrites += 1;
       summary.perKind[String(event.kind) ?? "shell"] = kindStats;
+    } else if (event.type === "evict") {
+      summary.evictions += 1;
+      summary.evictedBytes += asNumber((event as unknown as { bytes?: unknown }).bytes);
     }
   }
 
@@ -151,8 +159,9 @@ export async function summarizeStats(root: string): Promise<StatsSummary> {
 export function formatStatsSummary(summary: StatsSummary): string {
   const lines = [
     "[token-saver] session statistics (bytes/4 token estimates, not billed tokens)",
-    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | sessions: ${summary.sessions}`,
-    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)`,
+    `compactions: ${summary.compactions} | duplicates avoided: ${summary.dedupHits} | retrievals: ${summary.retrievals} | commands rewritten: ${summary.rewrites} | evictions: ${summary.evictions} | sessions: ${summary.sessions}`,
+    `original: ${summary.originalBytes + summary.dedupedOriginalBytes} B | returned: ${summary.returnedBytes + summary.dedupedReturnedBytes} B | estimated reduction: ${summary.estimatedReductionPercent}% (~${summary.estimatedTokensSaved} tokens)` +
+      (summary.evictions > 0 ? ` | evicted from history: ${summary.evictedBytes} B` : ""),
   ];
   const kinds = Object.entries(summary.perKind);
   if (kinds.length > 0) {

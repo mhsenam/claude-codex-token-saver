@@ -86,3 +86,19 @@ test("summarizeStats on an empty store returns zeros without throwing", async (t
   assert.equal(summary.compactions, 0);
   assert.equal(summary.estimatedReductionPercent, 0);
 });
+
+test("evict events are summarized and rendered in the report", async (t) => {
+  const root = await rootFor(t);
+  await recordStats(root, { type: "compact", session: "e", kind: "shell", originalBytes: 50_000, returnedBytes: 5_000, artifactId: "e.a1" });
+  await recordStats(root, { type: "evict", session: "e", artifactId: "e.a1", bytes: 4_850 });
+  await recordStats(root, { type: "evict", session: "e", artifactId: "e.a2", bytes: 3_000 });
+
+  const summary = await summarizeStats(root);
+  assert.equal(summary.evictions, 2);
+  assert.equal(summary.evictedBytes, 7_850);
+  assert.equal(summary.compactions, 1);
+
+  const report = formatStatsSummary(summary);
+  assert.match(report, /evictions: 2 \| sessions: 1/);
+  assert.match(report, /evicted from history: 7,?850 B/);
+});
