@@ -1,0 +1,45 @@
+name: Publish npm package (GitHub Packages)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish @mhsenam/opencode-token-saver to GitHub Packages
+        working-directory: packages/opencode
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@mhsenam/opencode-token-saver@$VERSION" version >/dev/null 2>&1; then
+            echo "@mhsenam/opencode-token-saver@$VERSION already exists on GitHub Packages; skipping"
+            exit 0
+          fi
+          npm publish --access public
+
+      - name: Make the package public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH /user/packages/npm/opencode-token-saver -f visibility=public \
+            || echo "Automatic visibility change failed; set it manually in Settings -> Packages"

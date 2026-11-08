@@ -2,6 +2,7 @@
   "name": "token-saver",
   "version": "0.4.0",
   "private": true,
+  "license": "MIT",
   "description": "Reduce Claude Code, Codex, opencode, and Qoder token usage with deterministic, recoverable tool-output compaction.",
   "repository": {
     "type": "git",

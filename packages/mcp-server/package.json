@@ -2,6 +2,7 @@
   "name": "@token-saver/mcp-server",
   "version": "0.4.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
