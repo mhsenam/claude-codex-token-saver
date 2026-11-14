@@ -60,14 +60,14 @@ jobs:
           npm ci
           npm run build
           npm test
-      - name: Publish token-saver-mcp to npmjs
+      - name: Publish token-saver-compactor to npmjs
         working-directory: packages/mcp-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if npm view "token-saver-mcp@$VERSION" version >/dev/null 2>&1; then
-            echo "token-saver-mcp@$VERSION already exists on npmjs; skipping"
+          if npm view "token-saver-compactor@$VERSION" version >/dev/null 2>&1; then
+            echo "token-saver-compactor@$VERSION already exists on npmjs; skipping"
             exit 0
           fi
           npm publish --access public

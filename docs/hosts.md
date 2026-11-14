@@ -21,12 +21,12 @@ Register the MCP server in your host's MCP config:
 ```json
 {
   "mcpServers": {
-    "token-saver": { "command": "npx", "args": ["-y", "token-saver-mcp"] }
+    "token-saver": { "command": "npx", "args": ["-y", "token-saver-compactor"] }
   }
 }
 ```
 
-This runs the published `token-saver-mcp` bin through `npx` — no clone or
+This runs the published `token-saver-compactor` bin through `npx` — no clone or
 build step. It exposes `compact_read`, `compact_search`, `compact_run`,
 `output_slice`, and `stats`.
 
@@ -38,7 +38,7 @@ frontmatter and placement differ.
 ### Fallbacks
 
 - **Pinned version.** If `npx` resolves an unexpected version, pin it:
-  `npx -y token-saver-mcp@0.5.0`.
+  `npx -y token-saver-compactor@0.5.0`.
 - **Offline / local path.** Point the MCP `command` at `node` and the built
   bundle instead of `npx`. Run `npm run build` first; the bundle at
   `packages/mcp-server/dist/mcp-server.js` is self-contained (it carries a
@@ -82,7 +82,7 @@ Notes:
   {
     "context_servers": {
       "token-saver": {
-        "command": { "path": "npx", "args": ["-y", "token-saver-mcp"] }
+        "command": { "path": "npx", "args": ["-y", "token-saver-compactor"] }
       }
     }
   }
@@ -105,7 +105,7 @@ native `postToolUse` hook, plus MCP retrieval tools.
   opt-in (off by default), exactly like the other hosts. Enable it with
   `TOKEN_SAVER_TOOLS=shell,test,search,read`.
 - MCP tools come from `packages/copilot/.mcp.json`, which registers
-  `npx -y token-saver-mcp`.
+  `npx -y token-saver-compactor`.
 - Bundled skill: `packages/copilot/skills/token-saver/SKILL.md`.
 
 ### Manual setup
@@ -121,7 +121,7 @@ native `postToolUse` hook, plus MCP retrieval tools.
    `packages/copilot/`).
 3. Register the MCP server: in Copilot CLI run `/mcp add`, name the server
    `token-saver`, choose a local (stdio) server, command `npx`, args
-   `-y token-saver-mcp`. The bundled `packages/copilot/.mcp.json` shows the
+   `-y token-saver-compactor`. The bundled `packages/copilot/.mcp.json` shows the
    equivalent config.
 4. Optional — install the bundled skill: copy
    `packages/copilot/skills/token-saver/` to `.github/skills/token-saver/`

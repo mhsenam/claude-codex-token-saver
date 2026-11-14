@@ -12,7 +12,7 @@ import { testStore } from "./helpers.js";
 const execFileAsync = promisify(execFile);
 
 async function projectFor(t: test.TestContext): Promise<string> {
-  const project = await fs.mkdtemp(path.join(os.tmpdir(), "token-saver-mcp-"));
+  const project = await fs.mkdtemp(path.join(os.tmpdir(), "token-saver-compactor-"));
   const previous = process.cwd();
   process.chdir(project);
   t.after(async () => {

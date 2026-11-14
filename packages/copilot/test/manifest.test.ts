@@ -21,7 +21,7 @@ test("Copilot registers the universal npx MCP server", async () => {
   const mcp = await json("../.mcp.json");
   const server = mcp.mcpServers["token-saver"];
   assert.equal(server.command, "npx");
-  assert.deepEqual(server.args, ["-y", "token-saver-mcp"]);
+  assert.deepEqual(server.args, ["-y", "token-saver-compactor"]);
 });
 
 test("Copilot bundles a non-empty token-saver skill", async () => {

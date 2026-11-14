@@ -1,4 +1,4 @@
-# token-saver-mcp
+# token-saver-compactor
 
 Universal, local-first MCP server for deterministic, recoverable tool-output
 compaction. It shrinks verbose shell, test, search, and file-read output before
@@ -18,7 +18,7 @@ directly — no clone or build step:
 ```json
 {
   "mcpServers": {
-    "token-saver": { "command": "npx", "args": ["-y", "token-saver-mcp"] }
+    "token-saver": { "command": "npx", "args": ["-y", "token-saver-compactor"] }
   }
 }
 ```

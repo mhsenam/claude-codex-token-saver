@@ -1,10 +1,10 @@
 {
-  "name": "token-saver-mcp",
+  "name": "token-saver-compactor",
   "version": "0.5.0",
   "description": "Deterministic, recoverable compaction for verbose coding-tool output. Universal MCP server for any agentic harness.",
   "license": "MIT",
   "type": "module",
-  "bin": { "token-saver-mcp": "dist/mcp-server.js" },
+  "bin": { "token-saver-compactor": "dist/mcp-server.js" },
   "files": ["dist", "skills"],
   "engines": { "node": ">=22" },
   "repository": { "type": "git", "url": "git+https://github.com/mhsenam/claude-codex-token-saver.git" },

@@ -2,7 +2,7 @@
   "mcpServers": {
     "token-saver": {
       "command": "npx",
-      "args": ["-y", "token-saver-mcp"]
+      "args": ["-y", "token-saver-compactor"]
     }
   }
 }

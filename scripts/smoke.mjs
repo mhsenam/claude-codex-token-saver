@@ -168,7 +168,7 @@ try {
     ["compact_read", "compact_run", "compact_search", "output_slice", "stats"],
   );
   await binClient.close();
-  console.log("Built Claude hook, Qoder hook, opencode plugin, Codex MCP server, and token-saver-mcp bin passed smoke tests.");
+  console.log("Built Claude hook, Qoder hook, opencode plugin, Codex MCP server, and token-saver-compactor bin passed smoke tests.");
 } finally {
   await rm(artifacts, { recursive: true, force: true });
 }
