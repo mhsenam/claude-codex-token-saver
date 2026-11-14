@@ -66,7 +66,7 @@ Additional behavior:
 - At auto-compact time, guides the host's own compactor to replace old verbose tool results with artifact placeholders when enough output has been stored (see the [Roadmap](#roadmap)).
 - Fails open: the original result passes through if compaction fails.
 
-Automatic compaction of `Read`/`read` output is **off by default**: an agent that edits a file it has only seen as a head/tail preview can produce wrong edits. Large-file reads stay available through the explicit `compact_read` tool (which always compacts, since calling it is an explicit request), and automatic read compaction can be enabled with `TOKEN_SAVER_TOOLS=shell,test,search,read`.
+Automatic compaction of `Read`/`read` output is **off by default**: an agent that edits a file it has only seen as a head/tail preview can produce wrong edits. Large-file reads stay available through the explicit `compact_read` tool (which applies the read compaction policy even when automatic read compaction is off, though small files still pass through unchanged), and automatic read compaction can be enabled with `TOKEN_SAVER_TOOLS=shell,test,search,read`.
 
 ## Quick start
 

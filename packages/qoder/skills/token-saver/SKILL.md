@@ -11,7 +11,7 @@ For operations expected to produce more than about 100 lines, prefer the token-s
 
 - `compact_run` for verbose builds, tests, installs, and other shell commands. Not for interactive commands or output the user must read in full.
 - `compact_search` for broad repository searches; scope `paths` or `glob` when possible.
-- `compact_read` for large files; it always compacts without `startLine`, even for short files.
+- `compact_read` for large files; without `startLine` it applies the read compaction policy even when automatic read compaction is off, and small files pass through unchanged.
 
 Use built-in tools for small outputs and exact ranges. Never edit a file seen only as a compacted preview; fetch the exact region first.
 
