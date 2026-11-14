@@ -7,11 +7,13 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -20,10 +22,11 @@ jobs:
           node-version: 22
           registry-url: https://npm.pkg.github.com
 
-      - name: Install and build
+      - name: Install, build, and test
         run: |
           npm ci
           npm run build
+          npm test
 
       - name: Publish @mhsenam/opencode-token-saver to GitHub Packages
         working-directory: packages/opencode
@@ -52,10 +55,11 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - name: Install and build
+      - name: Install, build, and test
         run: |
           npm ci
           npm run build
+          npm test
       - name: Publish token-saver-mcp to npmjs
         working-directory: packages/mcp-server
         env:
