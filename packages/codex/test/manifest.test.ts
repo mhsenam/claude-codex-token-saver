@@ -21,5 +21,6 @@ test("Codex skill selects compact tools without banning exact built-in reads", a
   const skill = await readFile(new URL("../skills/token-saver/SKILL.md", import.meta.url), "utf8");
   assert.match(skill, /compact_run/);
   assert.match(skill, /output_slice/);
-  assert.match(skill, /built-in tools for small outputs, exact edits, and precise file ranges/);
+  assert.match(skill, /An explicit `startLine` returns an exact uncompacted range/);
+  assert.match(skill, /use the built-in read for files under about 100 lines/);
 });

@@ -1,12 +1,13 @@
 ---
 name: token-saver
-description: Recover full tool output compacted by token-saver. Use when a result contains a token-saver artifact ID or omitted lines, or when asked about token usage and savings.
+description: Retrieve exact lines from token-saver compacted output instead of rerunning commands, and read large files in bounded windows. Use when a result shows a [token-saver] marker or artifact ID, when about to rerun a command just to see earlier output, when reading a large file, or when asked about token savings.
 ---
 
 # Token Saver
 
-When a result contains `[token-saver]`, use the compacted content first. Call the `token-saver` MCP server's `output_slice` tool with its `artifactId` only when omitted details are needed.
+Results marked `[token-saver]` arrive already compacted; the header names the artifact ID.
 
-A result marked `[token-saver] duplicate:` is an exact repeat of an earlier output; its preview plus the referenced artifact covers everything, so do not request the content again unless a specific line range matters.
-
-Request a small `startLine`/`maxLines` range, then continue from the returned line number if necessary. Do not rerun a verbose command solely to recover output that is already stored in an artifact. To report how much context token-saver has saved, call the `stats` tool.
+- Call `output_slice` with `maxLines` 40-50 and never omit it (the default returns 200 lines). Continue by advancing `startLine` to the end of the returned range; do not widen the window. Never retrieve more of an artifact than you will use.
+- Do not rerun a verbose command solely to recover output already stored in an artifact. A `[token-saver] duplicate:` result repeats an earlier output; trust its preview, and slice the referenced artifactId if a specific line matters.
+- Do not read large files end-to-end. Use Read with offset/limit or `compact_read` with `startLine` in 100-200-line windows; fetch the next window only if needed. Never edit based on a compacted preview; fetch the exact region you will modify first.
+- After a fix, rerun the narrowest failing command, not the whole suite. To report savings, call `stats` and present figures as estimates.
