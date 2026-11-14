@@ -1,6 +1,6 @@
 {
   "name": "@mhsenam/opencode-token-saver",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Reduce opencode token usage with deterministic, recoverable tool-output compaction.",
   "license": "MIT",
   "author": {

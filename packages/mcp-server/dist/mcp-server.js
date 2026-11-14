@@ -37375,7 +37375,7 @@ async function statsSummary(options) {
 // packages/mcp-server/src/server.ts
 var config2 = configFromEnv();
 var store = new ArtifactStore(config2);
-var server = new McpServer({ name: "token-saver", version: "0.3.0" });
+var server = new McpServer({ name: "token-saver", version: "0.5.0" });
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }

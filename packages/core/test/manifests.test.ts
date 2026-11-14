@@ -23,6 +23,7 @@ test("every host manifest carries the root package version", async () => {
     "packages/codex/package.json",
     "packages/core/package.json",
     "packages/mcp-server/package.json",
+    "packages/copilot/package.json",
   ];
 
   for (const manifest of manifests) {

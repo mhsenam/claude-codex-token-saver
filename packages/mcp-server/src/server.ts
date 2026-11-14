@@ -6,7 +6,7 @@ import { compactRead, compactRun, compactSearch, outputSlice, statsSummary } fro
 
 const config = configFromEnv();
 const store = new ArtifactStore(config);
-const server = new McpServer({ name: "token-saver", version: "0.3.0" });
+const server = new McpServer({ name: "token-saver", version: "0.5.0" });
 
 function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };

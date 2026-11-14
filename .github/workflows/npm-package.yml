@@ -43,3 +43,27 @@ jobs:
         run: |
           gh api --method PATCH /user/packages/npm/opencode-token-saver -f visibility=public \
             || echo "Automatic visibility change failed; set it manually in Settings -> Packages"
+
+  publish-npmjs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Publish token-saver-mcp to npmjs
+        working-directory: packages/mcp-server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "token-saver-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "token-saver-mcp@$VERSION already exists on npmjs; skipping"
+            exit 0
+          fi
+          npm publish --access public

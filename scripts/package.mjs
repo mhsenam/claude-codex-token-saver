@@ -1,9 +1,10 @@
 import { cp, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { emitSkillVariants } from "./skill-variants.mjs";
 
 await rm("release", { recursive: true, force: true });
 
-for (const host of ["claude", "codex", "qoder"]) {
+for (const host of ["claude", "codex", "qoder", "copilot"]) {
   const sourceRoot = path.resolve(`packages/${host}`);
   const destination = `release/${host}/token-saver`;
   await mkdir(destination, { recursive: true });
@@ -29,6 +30,8 @@ await cp(opencodeRoot, "release/opencode", {
   },
 });
 
+await emitSkillVariants();
+
 console.log(
-  "Created release/claude/token-saver, release/codex/token-saver, release/qoder/token-saver, and release/opencode",
+  "Created release/claude/token-saver, release/codex/token-saver, release/qoder/token-saver, release/copilot/token-saver, release/opencode, and release/skills",
 );
