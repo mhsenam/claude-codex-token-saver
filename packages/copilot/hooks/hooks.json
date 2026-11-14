@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash|powershell|grep|glob|view",
+        "bash": "./post-tool-use.sh",
+        "powershell": "./post-tool-use.ps1",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

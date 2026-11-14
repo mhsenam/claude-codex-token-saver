@@ -1,0 +1,7 @@
+{
+  "name": "@token-saver/copilot",
+  "version": "0.4.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module"
+}

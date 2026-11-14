@@ -44,6 +44,25 @@ try {
   const qoderOutput = JSON.parse(qoderHook.stdout);
   assert.match(qoderOutput.hookSpecificOutput.updatedToolOutput, /\[token-saver\] test:/);
 
+  const copilotInput = {
+    sessionId: "built-smoke-copilot",
+    toolName: "bash",
+    toolArgs: { command: "npm test" },
+    toolResult: {
+      resultType: "success",
+      textResultForLlm: Array.from({ length: 400 }, (_, index) => `log ${index}`).join("\n"),
+    },
+  };
+  const copilotHook = spawnSync(process.execPath, ["packages/copilot/dist/post-tool-use.js"], {
+    input: JSON.stringify(copilotInput),
+    encoding: "utf8",
+    env: { ...process.env, TOKEN_SAVER_DATA_DIR: artifacts },
+  });
+  assert.equal(copilotHook.status, 0, copilotHook.stderr);
+  const copilotOutput = JSON.parse(copilotHook.stdout);
+  assert.equal(copilotOutput.modifiedResult.resultType, "success");
+  assert.match(copilotOutput.modifiedResult.textResultForLlm, /\[token-saver\] test:/);
+
   const pluginModule = await import(
     pathToFileURL(path.resolve("packages/opencode/dist/plugin.js"))
   );

@@ -28,7 +28,7 @@
   "scripts": {
     "build": "npm run typecheck && node scripts/build.mjs",
     "typecheck": "tsc",
-    "test": "tsx --test packages/core/test/*.test.ts packages/mcp-server/test/*.test.ts packages/claude/test/*.test.ts packages/codex/test/*.test.ts packages/opencode/test/*.test.ts packages/qoder/test/*.test.ts",
+    "test": "tsx --test packages/core/test/*.test.ts packages/mcp-server/test/*.test.ts packages/claude/test/*.test.ts packages/codex/test/*.test.ts packages/opencode/test/*.test.ts packages/qoder/test/*.test.ts packages/copilot/test/*.test.ts",
     "benchmark": "tsx benchmarks/token-savings.ts",
     "smoke": "node scripts/smoke.mjs",
     "package": "npm run build && node scripts/package.mjs"
