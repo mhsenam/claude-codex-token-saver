@@ -135,7 +135,21 @@ try {
   assert.match(mcpStats.content[0].text, /\[token-saver\] session statistics/);
   assert.match(mcpStats.content[0].text, /compactions: \d+/);
   await client.close();
-  console.log("Built Claude hook, Qoder hook, opencode plugin, and Codex MCP server passed smoke tests.");
+
+  const binTransport = new StdioClientTransport({
+    command: process.execPath,
+    args: ["packages/mcp-server/dist/mcp-server.js"],
+    env: { ...process.env },
+  });
+  const binClient = new Client({ name: "token-saver-bin-smoke", version: "1.0.0" });
+  await binClient.connect(binTransport);
+  const binTools = await binClient.listTools();
+  assert.deepEqual(
+    binTools.tools.map((tool) => tool.name).sort(),
+    ["compact_read", "compact_run", "compact_search", "output_slice", "stats"],
+  );
+  await binClient.close();
+  console.log("Built Claude hook, Qoder hook, opencode plugin, Codex MCP server, and token-saver-mcp bin passed smoke tests.");
 } finally {
   await rm(artifacts, { recursive: true, force: true });
 }

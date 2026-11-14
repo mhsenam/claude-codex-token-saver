@@ -1,7 +1,7 @@
 import { build } from "esbuild";
 import { cp, mkdir, rm } from "node:fs/promises";
 
-const bundle = (entry, outfile) =>
+const bundle = (entry, outfile, banner) =>
   build({
     entryPoints: [entry],
     outfile,
@@ -10,9 +10,10 @@ const bundle = (entry, outfile) =>
     format: "esm",
     target: "node22",
     legalComments: "eof",
+    ...(banner ? { banner: { js: banner } } : {}),
   });
 
-const hosts = ["claude", "codex", "opencode", "qoder"];
+const hosts = ["claude", "codex", "opencode", "qoder", "mcp-server"];
 
 await Promise.all(hosts.map((host) => rm(`packages/${host}/dist`, { recursive: true, force: true })));
 await Promise.all(hosts.map((host) => mkdir(`packages/${host}/dist`, { recursive: true })));
@@ -25,6 +26,7 @@ await Promise.all([
   bundle("packages/core/src/pre-compact-main.ts", "packages/qoder/dist/pre-compact.js"),
   bundle("packages/opencode/src/plugin.ts", "packages/opencode/dist/plugin.js"),
   bundle("packages/mcp-server/src/server.ts", "packages/claude/dist/mcp-server.js"),
+  bundle("packages/mcp-server/src/server.ts", "packages/mcp-server/dist/mcp-server.js", "#!/usr/bin/env node"),
 ]);
 
 await cp("packages/claude/dist/mcp-server.js", "packages/codex/dist/mcp-server.js");
