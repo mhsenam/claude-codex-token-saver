@@ -1,0 +1,39 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+export function splitFrontmatter(raw) {
+  const match = /^---\n([\s\S]*?)\n---\n?/.exec(raw);
+  if (!match) return { frontmatter: "", body: raw };
+  return { frontmatter: match[1], body: raw.slice(match[0].length) };
+}
+
+export function bodyOf(raw) {
+  return splitFrontmatter(raw).body;
+}
+
+export function buildVariants(canonical) {
+  const { frontmatter, body } = splitFrontmatter(canonical);
+  const description = /description:\s*(.+)/.exec(frontmatter)?.[1]?.trim() ?? "";
+  return [
+    { path: "antigravity/token-saver/SKILL.md", content: canonical },
+    { path: "cursor/token-saver.mdc", content: `---\ndescription: ${description}\nglobs:\nalwaysApply: false\n---\n${body}` },
+    { path: "cline/token-saver.md", content: body },
+    { path: "goose/.goosehints", content: body },
+    { path: "zed/token-saver.rules", content: body },
+    { path: "agents/AGENTS.md", content: body },
+  ];
+}
+
+export async function emitSkillVariants(root = "release/skills") {
+  const canonical = await readFile("packages/mcp-server/skills/token-saver/SKILL.md", "utf8");
+  for (const variant of buildVariants(canonical)) {
+    const dest = path.join(root, variant.path);
+    await mkdir(path.dirname(dest), { recursive: true });
+    await writeFile(dest, variant.content);
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await emitSkillVariants();
+}

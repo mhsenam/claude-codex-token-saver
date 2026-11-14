@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { bodyOf, buildVariants } from "../../../scripts/skill-variants.mjs";
+
+test("skill variants preserve body content identity", async () => {
+  const canonical = await readFile("packages/mcp-server/skills/token-saver/SKILL.md", "utf8");
+  const canonicalBody = bodyOf(canonical);
+  const variants = buildVariants(canonical);
+  assert.ok(variants.length >= 6, "expected at least six host wrappers");
+  for (const variant of variants) {
+    assert.equal(bodyOf(variant.content), canonicalBody, `body drifted in ${variant.path}`);
+  }
+  const paths = variants.map((v) => v.path);
+  for (const required of ["cursor/token-saver.mdc", "cline/token-saver.md", "goose/.goosehints", "zed/token-saver.rules", "agents/AGENTS.md", "antigravity/token-saver/SKILL.md"]) {
+    assert.ok(paths.includes(required), `missing wrapper ${required}`);
+  }
+});
