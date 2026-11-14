@@ -1,4 +1,4 @@
-name: Publish npm package (GitHub Packages)
+name: Publish npm packages (GitHub Packages + npmjs)
 
 on:
   release:

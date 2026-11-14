@@ -57,6 +57,30 @@ test("view is treated as read and stays opt-in", async (t) => {
   assert.match(modified.textResultForLlm, /\[token-saver\] read:/);
 });
 
+test("failure resultType is preserved on compacted output", async (t) => {
+  const store = await storeFor(t);
+  const result = await handleCopilotPostToolUse({
+    sessionId: "copilot-error",
+    toolName: "bash",
+    toolArgs: { command: "npm test" },
+    toolResult: { resultType: "error", textResultForLlm: verbose() },
+  }, resolveConfig(), store);
+  const modified = result?.modifiedResult as { resultType: string; textResultForLlm: string };
+  assert.equal(modified.resultType, "error", "Copilot's own result status must survive compaction");
+  assert.match(modified.textResultForLlm, /\[token-saver\] test:/);
+});
+
+test("bounded view range passes through even with read compaction enabled", async (t) => {
+  const store = await storeFor(t);
+  const readEnabled = resolveConfig({ enabledTools: ["shell", "test", "search", "read"] });
+  assert.equal(await handleCopilotPostToolUse({
+    sessionId: "copilot-bounded-view",
+    toolName: "view",
+    toolArgs: { path: "a.ts", offset: 10, limit: 50 },
+    toolResult: { resultType: "success", textResultForLlm: verbose() },
+  }, readEnabled, store), undefined, "explicitly requested file ranges must be preserved");
+});
+
 test("grep maps to the search policy", async (t) => {
   const store = await storeFor(t);
   const content = Array.from({ length: 800 }, (_, index) => `src/file.ts:${index + 1}:match`).join("\n");

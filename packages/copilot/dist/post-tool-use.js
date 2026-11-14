@@ -616,7 +616,7 @@ async function handleCopilotPostToolUse(payload, config = configFromEnv(), store
   const result2 = await handlePostToolUse(
     {
       session_id: payload.sessionId,
-      tool_name: TOOL_NAME_ALIASES[payload.toolName] ?? payload.toolName,
+      tool_name: Object.hasOwn(TOOL_NAME_ALIASES, payload.toolName) ? TOOL_NAME_ALIASES[payload.toolName] : payload.toolName,
       tool_input: payload.toolArgs,
       tool_response: text
     },
@@ -627,7 +627,7 @@ async function handleCopilotPostToolUse(payload, config = configFromEnv(), store
   if (!result2) return void 0;
   const updated = result2.hookSpecificOutput.updatedToolOutput;
   if (typeof updated !== "string") return void 0;
-  return { modifiedResult: { resultType: "success", textResultForLlm: updated } };
+  return { modifiedResult: { resultType: payload.toolResult?.resultType ?? "success", textResultForLlm: updated } };
 }
 
 // packages/copilot/src/post-tool-use.ts

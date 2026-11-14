@@ -3,7 +3,7 @@
   "version": "0.5.0",
   "private": true,
   "license": "MIT",
-  "description": "Reduce Claude Code, Codex, opencode, and Qoder token usage with deterministic, recoverable tool-output compaction.",
+  "description": "Reduce Claude Code, Codex, opencode, Qoder, and GitHub Copilot CLI token usage with deterministic, recoverable tool-output compaction, plus a universal MCP server for any agentic harness.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mhsenam/claude-codex-token-saver.git"

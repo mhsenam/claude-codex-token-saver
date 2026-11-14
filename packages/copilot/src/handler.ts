@@ -20,7 +20,7 @@ export async function handleCopilotPostToolUse(
   const result = await handlePostToolUse(
     {
       session_id: payload.sessionId,
-      tool_name: TOOL_NAME_ALIASES[payload.toolName] ?? payload.toolName,
+      tool_name: Object.hasOwn(TOOL_NAME_ALIASES, payload.toolName) ? TOOL_NAME_ALIASES[payload.toolName] : payload.toolName,
       tool_input: payload.toolArgs,
       tool_response: text,
     },
@@ -31,5 +31,5 @@ export async function handleCopilotPostToolUse(
   if (!result) return undefined;
   const updated = (result.hookSpecificOutput as { updatedToolOutput?: unknown }).updatedToolOutput;
   if (typeof updated !== "string") return undefined;
-  return { modifiedResult: { resultType: "success", textResultForLlm: updated } };
+  return { modifiedResult: { resultType: payload.toolResult?.resultType ?? "success", textResultForLlm: updated } };
 }

@@ -18,7 +18,7 @@ export function buildVariants(canonical) {
   const description = /description:\s*(.+)/.exec(frontmatter)?.[1]?.trim() ?? "";
   return [
     { path: "antigravity/token-saver/SKILL.md", content: canonical.replace(/\r\n/g, "\n") },
-    { path: "cursor/token-saver.mdc", content: `---\ndescription: ${description}\nglobs:\nalwaysApply: false\n---\n${body}` },
+    { path: "cursor/token-saver.mdc", content: `---\ndescription: ${JSON.stringify(description)}\nglobs:\nalwaysApply: false\n---\n${body}` },
     { path: "cline/token-saver.md", content: body },
     { path: "goose/.goosehints", content: body },
     { path: "zed/token-saver.rules", content: body },
@@ -35,6 +35,6 @@ export async function emitSkillVariants(root = "release/skills") {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await emitSkillVariants();
 }
